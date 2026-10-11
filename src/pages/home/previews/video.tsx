@@ -31,6 +31,74 @@ import { ArtPlayerIconsSubtitle } from "~/components/icons"
 import { useNavigate } from "@solidjs/router"
 import "./artplayer.css"
 
+/**
+ * 解析 Danmuji / Bilibili 弹幕 XML，转换为 artplayer-plugin-danmuku 能识别的数组格式。
+ * 关键点：显式提取每条弹幕的秒级时间，避免插件内置 XML 解析器在遇到
+ * <RecorderXmlStyle>、<?xml-stylesheet?> 等非弹幕节点时把时间字段读废，
+ * 导致所有弹幕时间归零（表现为“像水流一样不跟随进度条”）。
+ */
+const parseDanmakuXml = (xmlText: string) => {
+  const result: {
+    text: string
+    time: number
+    color: string
+    mode: number
+    border?: boolean
+    style?: Record<string, string>
+  }[] = []
+
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(xmlText, "text/xml")
+
+    // 若 XML 解析失败，parsererror 节点会出现在文档里
+    if (doc.getElementsByTagName("parsererror").length > 0) {
+      console.warn("[danmuku] XML 解析失败")
+      return result
+    }
+
+    const nodes = doc.getElementsByTagName("d")
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i]
+      const p = node.getAttribute("p")
+      const text = (node.textContent || "").trim()
+      if (!p || !text) continue
+
+      const parts = p.split(",")
+      const time = parseFloat(parts[0])
+      if (!isFinite(time) || time < 0) continue
+
+      // Danmuji 与 Bilibili 的 p 字段含义一致：
+      // [0]=时间(秒) [1]=模式 [2]=字号 [3]=颜色(十进制) [4]=时间戳 ...
+      const modeRaw = parseInt(parts[1] || "1", 10)
+      const colorRaw = parseInt(parts[3] || "16777215", 10)
+
+      // artplayer-plugin-danmuku 的 mode 约定：
+      // 0=滚动 1=顶部 2=底部
+      // Bilibili: 1/2/3 滚动, 4 底部, 5 顶部
+      let mode = 0
+      if (modeRaw === 4) mode = 2
+      else if (modeRaw === 5) mode = 1
+      else mode = 0
+
+      const color =
+        "#" +
+        (isFinite(colorRaw) ? colorRaw : 16777215).toString(16).padStart(6, "0")
+
+      result.push({
+        text,
+        time,
+        color,
+        mode,
+      })
+    }
+  } catch (e) {
+    console.warn("[danmuku] 解析异常", e)
+  }
+
+  return result
+}
+
 const Preview = () => {
   const { pathname, searchParams } = useRouter()
   const { proxyLink } = useLink()
@@ -294,58 +362,87 @@ const Preview = () => {
         player.setting.remove("setting_subtitle")
       setSubtitleVisible(false)
     }
+
+    // ============ 弹幕：手动拉取 XML 并解析为数组，交给插件 ============
     const danmukuPlugin = player.plugins.artplayerPluginDanmuku as ReturnType<
       ReturnType<typeof artplayerPluginDanmuku>
     >
     if (danmukuPlugin) {
       danmukuPlugin.reset()
       danmukuPlugin.option.danmuku = []
-      danmukuPlugin.load(danmu ? proxyLink(danmu, true) : undefined)
-    } else if (danmu) {
-      player.plugins.add(
-        artplayerPluginDanmuku({
-          speed: 5,
-          opacity: 1,
-          fontSize: 25,
-          mode: 0,
-          antiOverlap: false,
-          synchronousPlayback: false,
-          theme: "dark",
-          heatmap: true,
-          ...JSON.parse(localStorage.getItem("danmuku_config") || "{}"),
-          emitter: false,
-          danmuku: proxyLink(danmu, true),
-        }),
-      )
-      player.on("artplayerPluginDanmuku:config", (option) => {
-        const {
-          speed,
-          margin,
-          opacity,
-          mode,
-          modes,
-          fontSize,
-          antiOverlap,
-          synchronousPlayback,
-          heatmap,
-          visible,
-        } = option as DanmukuOption
-        localStorage.setItem(
-          "danmuku_config",
-          JSON.stringify({
-            speed,
-            margin,
-            opacity,
-            mode,
-            modes,
-            fontSize,
-            antiOverlap,
-            synchronousPlayback,
-            heatmap,
-            visible,
-          }),
-        )
-      })
+    }
+
+    if (danmu) {
+      const danmuUrl = proxyLink(danmu, true)
+      // 先 fetch 原始 XML 文本，手动解析出带正确时间的弹幕数组，
+      // 避免插件内置 XML 解析器把时间字段读废。
+      fetch(danmuUrl)
+        .then((resp) => {
+          if (!resp.ok) throw new Error("danmuku fetch failed")
+          return resp.text()
+        })
+        .then((xmlText) => {
+          const parsed = parseDanmakuXml(xmlText)
+          console.log("[danmuku] parsed count:", parsed.length)
+          if (!parsed.length) return
+
+          const existing = player.plugins.artplayerPluginDanmuku as ReturnType<
+            ReturnType<typeof artplayerPluginDanmuku>
+          >
+          if (existing) {
+            existing.reset()
+            existing.option.danmuku = parsed as any
+            existing.load()
+          } else {
+            player.plugins.add(
+              artplayerPluginDanmuku({
+                speed: 5,
+                opacity: 1,
+                fontSize: 25,
+                mode: 0,
+                antiOverlap: false,
+                synchronousPlayback: false,
+                theme: "dark",
+                heatmap: true,
+                ...JSON.parse(localStorage.getItem("danmuku_config") || "{}"),
+                emitter: false,
+                danmuku: parsed as any,
+              }),
+            )
+            player.on("artplayerPluginDanmuku:config", (option) => {
+              const {
+                speed,
+                margin,
+                opacity,
+                mode,
+                modes,
+                fontSize,
+                antiOverlap,
+                synchronousPlayback,
+                heatmap,
+                visible,
+              } = option as DanmukuOption
+              localStorage.setItem(
+                "danmuku_config",
+                JSON.stringify({
+                  speed,
+                  margin,
+                  opacity,
+                  mode,
+                  modes,
+                  fontSize,
+                  antiOverlap,
+                  synchronousPlayback,
+                  heatmap,
+                  visible,
+                }),
+              )
+            })
+          }
+        })
+        .catch((e) => {
+          console.warn("[danmuku] load failed", e)
+        })
     }
   }
 
