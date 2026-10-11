@@ -36,6 +36,45 @@ jobs:
         with:
           run_install: false
 
+      # ============ workflow_dispatch 时：同步版本、提交、打标签 ============
+      - name: Prepare version and tag
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -e
+          VERSION="${{ github.event.inputs.version }}"
+          echo "Preparing release v$VERSION"
+
+          # 配置 git 身份（不依赖任何 Secret）
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 同步 package.json 版本
+          jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp
+          mv package.json.tmp package.json
+          git add package.json
+          git commit -m "chore: release v$VERSION" --no-verify || echo "No changes to commit"
+
+          # 删除旧的 edge 标签，避免干扰 git describe
+          git tag -d edge 2>/dev/null || true
+
+          # 打上正式版本标签
+          git tag -a "v$VERSION" -m "Release v$VERSION" -f
+
+          # 推送提交和标签回仓库（Release 创建时需要用到标签）
+          git push origin HEAD:${{ github.ref_name }} || git push origin HEAD
+          git push origin "v$VERSION" -f
+
+      # ============ 统一拿到本次构建用的标签 ============
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      # ============ 构建 regular 版本 ============
       - name: Build Release
         run: |
           chmod +x build.sh
@@ -49,6 +88,7 @@ jobs:
           mkdir -p regular-dist
           mv dist/* regular-dist/
 
+      # ============ 构建 lite 版本 ============
       - name: Build Lite Release
         run: |
           chmod +x build.sh
@@ -63,15 +103,7 @@ jobs:
           mv dist/* lite-dist/
           mv regular-dist/* dist/
 
-      - name: Determine tag
-        id: tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-
+      # ============ 创建 Release 并上传产物 ============
       - name: Create Release
         run: |
           gh release create \
