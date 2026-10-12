@@ -144,7 +144,7 @@ const Item = (props: ItemProps) => {
             <SelectOptions
               readonly={props.readonly}
               searchable={props.type === Type.Select && props.searchable}
-              options={props.options.split(",").map((key) => ({
+              options={(props.options || "").split(",").map((key) => ({
                 key,
                 label: t(
                   (props.options_prefix ??

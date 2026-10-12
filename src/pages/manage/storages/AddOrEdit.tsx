@@ -101,7 +101,7 @@ const AddOrEdit = () => {
     return r.post(`/admin/storage/${id ? "update" : "create"}`, storage)
   })
 
-  // 修复 1：alert getter 加完整防御
+  // ===== 修复 1：alert memo 加完整防御，防止 config 为 undefined =====
   const alert = createMemo(() => {
     const driverInfo = drivers()[storage.driver]
     const i = driverInfo?.config?.alert
@@ -118,7 +118,7 @@ const AddOrEdit = () => {
     >
       <Heading mb="$2">{t(`global.${id ? "edit" : "add"}`)}</Heading>
       <VStack mb="$2" spacing="$2">
-        {/* 修复 2：用 Show 包住 Item，等 storage.driver 有值再渲染 */}
+        {/* ===== 修复 2：编辑模式下等 storage.driver 有值再渲染 Item ===== */}
         <Show when={!id || storage.driver}>
           <Item
             name="driver"
@@ -127,7 +127,7 @@ const AddOrEdit = () => {
             required
             searchable
             type={Type.Select}
-            // 修复 3：options 加兜底，防止 undefined
+            // ===== 修复 3：options 加兜底，防止 undefined 传给 Item =====
             options={
               id ? storage.driver || "" : Object.keys(drivers()).join(",")
             }
