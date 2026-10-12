@@ -100,13 +100,16 @@ const AddOrEdit = () => {
     setStorage("addition", JSON.stringify(addition))
     return r.post(`/admin/storage/${id ? "update" : "create"}`, storage)
   })
+
+  // 修复 1：alert getter 加完整防御
   const alert = createMemo(() => {
-    const i = drivers()[storage.driver]?.config.alert
-    console.log(i)
+    const driverInfo = drivers()[storage.driver]
+    const i = driverInfo?.config?.alert
     if (i) {
       return i.split("|")[0]
     }
   })
+
   const [exportOpened, setExportOpened] = createSignal(false)
   const [importOpened, setImportOpened] = createSignal(false)
   return (
@@ -115,42 +118,48 @@ const AddOrEdit = () => {
     >
       <Heading mb="$2">{t(`global.${id ? "edit" : "add"}`)}</Heading>
       <VStack mb="$2" spacing="$2">
-        <Item
-          name="driver"
-          default=""
-          readonly={id !== undefined}
-          required
-          searchable
-          type={Type.Select}
-          options={id ? storage.driver : Object.keys(drivers()).join(",")}
-          value={storage.driver}
-          full_name_path="storages.common.driver"
-          options_prefix="drivers.drivers"
-          driver="drivers"
-          onChange={(value) => {
-            for (const item of drivers()[value].common) {
-              setStorage(
-                item.name as keyof Storage,
-                GetDefaultValue(item.type, item.default) as any,
-              )
+        {/* 修复 2：用 Show 包住 Item，等 storage.driver 有值再渲染 */}
+        <Show when={!id || storage.driver}>
+          <Item
+            name="driver"
+            default=""
+            readonly={id !== undefined}
+            required
+            searchable
+            type={Type.Select}
+            // 修复 3：options 加兜底，防止 undefined
+            options={
+              id ? storage.driver || "" : Object.keys(drivers()).join(",")
             }
-            // clear addition first
-            setAddition(
-              produce((addition) => {
-                for (const key in addition) {
-                  delete addition[key]
-                }
-              }),
-            )
-            for (const item of drivers()[value].additional) {
+            value={storage.driver}
+            full_name_path="storages.common.driver"
+            options_prefix="drivers.drivers"
+            driver="drivers"
+            onChange={(value) => {
+              for (const item of drivers()[value].common) {
+                setStorage(
+                  item.name as keyof Storage,
+                  GetDefaultValue(item.type, item.default) as any,
+                )
+              }
+              // clear addition first
               setAddition(
-                item.name,
-                GetDefaultValue(item.type, item.default) as any,
+                produce((addition) => {
+                  for (const key in addition) {
+                    delete addition[key]
+                  }
+                }),
               )
-            }
-            setStorage("driver", value)
-          }}
-        />
+              for (const item of drivers()[value].additional) {
+                setAddition(
+                  item.name,
+                  GetDefaultValue(item.type, item.default) as any,
+                )
+              }
+              setStorage("driver", value)
+            }}
+          />
+        </Show>
         <Show when={alert()}>
           <Alert status={alert() as any} w="$full">
             <AlertIcon />
