@@ -119,6 +119,21 @@ jobs:
         run: |
           npx changelogithub --output ${{ github.workspace }}-CHANGELOG.txt || echo "" > ${{ github.workspace }}-CHANGELOG.txt
 
+          # GitHub Release body 上限 125,000 字符，超了直接 422。
+          # 截到 120,000 字符（留余量），并在末尾指向完整 CHANGELOG。
+          CHANGELOG_FILE="${{ github.workspace }}-CHANGELOG.txt"
+          MAX_CHARS=120000
+          if [ "$(wc -c < "$CHANGELOG_FILE")" -gt "$MAX_CHARS" ]; then
+            echo "Changelog exceeds ${MAX_CHARS} bytes, truncating..."
+            # 按行截断，避免切断 markdown 语法
+            head -c "$MAX_CHARS" "$CHANGELOG_FILE" | sed '$d' > "${CHANGELOG_FILE}.tmp"
+            echo "" >> "${CHANGELOG_FILE}.tmp"
+            echo "---" >> "${CHANGELOG_FILE}.tmp"
+            echo "" >> "${CHANGELOG_FILE}.tmp"
+            echo "_Release notes truncated to fit GitHub's 125,000-character limit. The complete changelog is available in [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md)._ " >> "${CHANGELOG_FILE}.tmp"
+            mv "${CHANGELOG_FILE}.tmp" "$CHANGELOG_FILE"
+          fi
+
       - name: Build Release
         run: |
           chmod +x build.sh
