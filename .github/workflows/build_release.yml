@@ -79,8 +79,12 @@ jobs:
         run: |
           jq --arg version "${{ steps.semver.outputs.version }}" '.version = $version' package.json > package.json.tmp && mv package.json.tmp package.json
           git add package.json
-          git commit -m "chore: release v${{ steps.semver.outputs.version }}" --no-verify
-          git push
+          if git diff --cached --quiet; then
+            echo "package.json version already up to date, skipping commit"
+          else
+            git commit -m "chore: release v${{ steps.semver.outputs.version }}" --no-verify
+            git push
+          fi
 
           # For local build, needn't push, the tag will be created by `gh release create`
           git tag "v${{ steps.semver.outputs.version }}" -m "Release v${{ steps.semver.outputs.version }}"
