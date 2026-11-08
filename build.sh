@@ -24,7 +24,7 @@ main() {
     parse_args "$@"
     set_defaults
     check_git_version_and_commit
-    set_build_version
+    update_package_version
     if [[ "$LITE_FLAG" == "true" ]]; then
         archive_name="openlist-frontend-dist-lite-${version_tag}"
     else
@@ -104,7 +104,7 @@ enforce_git_tag() {
 
 # Validate git tag against package.json version
 validate_git_tag() {
-    package_version=$(node -p 'require("./package.json").version')
+    package_version=$(grep '"version":' package.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
     git_version_clean=${git_version#v}
     if [[ "$git_version_clean" != "$package_version" ]]; then
         log_error "Package.json version (${package_version}) does not match git tag (${git_version_clean})."
@@ -114,23 +114,22 @@ validate_git_tag() {
 
 # Fallback to default git tag for development builds
 fallback_git_tag() {
-    if ! git_version=$(git describe --abbrev=0 --tags --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null); then
-        git_version_clean=$(node -p 'require("./package.json").version')
-        return
-    fi
-
+    git tag -d edge >/dev/null 2>&1 || true
+    git_version=$(git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0")
     git_version_clean=${git_version#v}
-    if [[ "$git_version_clean" =~ ^([0-9]+\.[0-9]+\.[0-9]+)([-+][0-9A-Za-z.-]+)?$ ]]; then
-        git_version_clean=${BASH_REMATCH[1]}
-    else
-        git_version_clean=$(node -p 'require("./package.json").version')
-    fi
+    git_version_clean=${git_version_clean%%-*}
 }
 
-# Set the version for the build
-set_build_version() {
+# Update package.json version
+update_package_version() {
     if [[ "$BUILD_TYPE" == "dev" ]]; then
-        log_info "Using ${git_version_clean} as the development build version"
+        # Handle both BSD and GNU sed syntax
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i "" "s/\"version\": *\"[^\"]*\"/\"version\": \"${git_version_clean}\"/" package.json
+        else
+            sed -i "s/\"version\": *\"[^\"]*\"/\"version\": \"${git_version_clean}\"/" package.json
+        fi
+        log_success "Package.json version updated to ${git_version_clean}"
         version_tag="v${git_version_clean}-${commit}"
         log_build "Building DEV version ${version_tag}..."
     elif [[ "$BUILD_TYPE" == "release" ]]; then

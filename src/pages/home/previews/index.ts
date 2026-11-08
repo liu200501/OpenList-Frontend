@@ -163,7 +163,7 @@ const previews: Preview[] = [
   },
   {
     key: "torrent",
-    exts: ["torrent", "cas", "oss"],
+    exts: ["torrent"],
     component: lazy(() => import("./torrent")),
     prior: true,
   },

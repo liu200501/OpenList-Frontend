@@ -31,14 +31,10 @@ export const Copy = () => {
   const [overwrite, setOverwrite] = createSignal(false)
   const [skipExisting, setSkipExisting] = createSignal(false)
   const [merge, setMerge] = createSignal(false)
-  const [followSeed, setFollowSeed] = createSignal(false)
   const handler = (name: string) => {
     if (name === "copy") {
       onOpen()
       setOverwrite(false)
-      setSkipExisting(false)
-      setMerge(false)
-      setFollowSeed(false)
     }
   }
   bus.on("tool", handler)
@@ -88,14 +84,6 @@ export const Copy = () => {
           >
             {t("home.conflict_policy.merge")}
           </Checkbox>
-          <Checkbox
-            mr="auto"
-            checked={followSeed()}
-            disabled={selectedObjs().some((obj) => obj.is_dir)}
-            onChange={() => setFollowSeed(!followSeed())}
-          >
-            {t("home.toolbar.follow_seed")}
-          </Checkbox>
         </VStack>
       }
       onSubmit={async (dst) => {
@@ -106,7 +94,6 @@ export const Copy = () => {
           overwrite(),
           skipExisting(),
           merge(),
-          followSeed(),
         )
         handleRespWithNotifySuccess(resp, () => {
           refresh()
@@ -125,13 +112,10 @@ export const Move = () => {
   const { refresh } = usePath()
   const [overwrite, setOverwrite] = createSignal(false)
   const [skipExisting, setSkipExisting] = createSignal(false)
-  const [followSeed, setFollowSeed] = createSignal(false)
   const handler = (name: string) => {
     if (name === "move") {
       onOpen()
       setOverwrite(false)
-      setSkipExisting(false)
-      setFollowSeed(false)
     }
   }
   bus.on("tool", handler)
@@ -170,14 +154,6 @@ export const Move = () => {
           >
             {t("home.conflict_policy.skip_existing")}
           </Checkbox>
-          <Checkbox
-            mr="auto"
-            checked={followSeed()}
-            disabled={selectedObjs().some((obj) => obj.is_dir)}
-            onChange={() => setFollowSeed(!followSeed())}
-          >
-            {t("home.toolbar.follow_seed")}
-          </Checkbox>
         </VStack>
       }
       onSubmit={async (dst) => {
@@ -187,7 +163,6 @@ export const Move = () => {
           selectedObjs().map((obj) => obj.name),
           overwrite(),
           skipExisting(),
-          followSeed(),
         )
         handleRespWithNotifySuccess(resp, () => {
           refresh()

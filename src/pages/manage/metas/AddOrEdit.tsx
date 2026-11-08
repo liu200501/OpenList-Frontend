@@ -123,7 +123,7 @@ const AddOrEdit = () => {
   }
 
   const t = useT()
-  const { params, to } = useRouter()
+  const { params, back } = useRouter()
   const { id } = params
   const [meta, setMeta] = createStore<Meta>({
     id: 0,
@@ -238,7 +238,7 @@ const AddOrEdit = () => {
             // TODO maybe can use handleRrespWithNotifySuccess
             handleResp(resp, () => {
               notify.success(t("global.save_success"))
-              to("/@manage/metas", false, { replace: true })
+              back()
             })
           }}
         >

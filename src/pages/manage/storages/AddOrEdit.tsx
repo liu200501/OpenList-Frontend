@@ -57,7 +57,7 @@ type Drivers = Record<string, DriverInfo>
 
 const AddOrEdit = () => {
   const t = useT()
-  const { params, to } = useRouter()
+  const { params, back, to } = useRouter()
   const { id } = params
   const [driversLoading, loadDrivers] = useFetch(
     (): PResp<Drivers> => r.get("/admin/driver/list"),
@@ -209,7 +209,7 @@ const AddOrEdit = () => {
               resp,
               () => {
                 notify.success(t("global.save_success"))
-                to("/@manage/storages", false, { replace: true })
+                back()
               },
               (msg, code) => {
                 if (resp.data.id) {

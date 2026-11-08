@@ -7,7 +7,6 @@ import indexes from "./indexes.json"
 import init from "./init.json"
 import login from "./login.json"
 import manage from "./manage.json"
-import media from "./media.json"
 import metas from "./metas.json"
 import plugins from "./plugins.json"
 import settings_other from "./settings_other.json"
@@ -27,7 +26,6 @@ export const dict = {
   init,
   login,
   manage,
-  media,
   metas,
   plugins,
   settings_other,
