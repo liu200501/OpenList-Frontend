@@ -21,7 +21,6 @@ import "./artplayer.css"
 import { useT } from "~/hooks"
 
 // 本地安全 JSON 解析：解析失败返回 undefined，不抛异常
-// （本地 utils 版本没有 safeJsonParse 导出，故在此实现）
 function safeJsonParse<T = unknown>(str: string | null): T | undefined {
   if (!str) return undefined
   try {
@@ -59,13 +58,12 @@ const Preview = () => {
       )
     }
   }
-  // 组件卸载标记
   let disposed = false
   let player: Artplayer
   let flvPlayer: mpegts.Player
   let hlsPlayer: Hls
 
-  // 自定义截图：文件名 = 视频名（去扩展名） + 视频当前播放时间点
+  // 自定义截图：文件名 = 视频名（去扩展名） + 『hh-mm-ss』
   const doScreenshot = () => {
     if (!player) return
     const baseName = objStore.obj.name
@@ -77,10 +75,8 @@ const Preview = () => {
     const minutes = Math.floor((totalSeconds % 3600) / 60)
     const seconds = totalSeconds % 60
     const pad = (n: number) => String(n).padStart(2, "0")
-    const timeStr =
-      hours > 0
-        ? `${pad(hours)}-${pad(minutes)}-${pad(seconds)}`
-        : `${pad(minutes)}-${pad(seconds)}`
+    // 固定 hh-mm-ss，始终补零到两位，并用 『』 包裹
+    const timeStr = `『${pad(hours)}-${pad(minutes)}-${pad(seconds)}』`
 
     player.screenshot(`${baseName}_${timeStr}`, true)
   }
@@ -98,7 +94,7 @@ const Preview = () => {
     flip: true,
     playbackRate: true,
     aspectRatio: true,
-    // 关闭默认截图按钮，改用下面的自定义控件
+    // 关闭默认截图按钮，改用自定义控件
     screenshot: false,
     setting: true,
     hotkey: true,
