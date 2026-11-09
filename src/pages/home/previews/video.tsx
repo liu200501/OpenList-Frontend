@@ -1,13 +1,10 @@
 import { Box } from "@hope-ui/solid"
 import { createMemo, createSignal, onCleanup, onMount } from "solid-js"
 import { useRouter, useLink } from "~/hooks"
-import { getMainColor, getSettingBool, objStore } from "~/store"
+import { getMainColor, getSettingBool, objStore, ObjStore } from "~/store"
 import { ObjType } from "~/types"
-import { ext, pathDir, pathJoin } from "~/utils"
-import Artplayer from "artplayer"
-import { type Option } from "artplayer/types/option"
-import { type Setting } from "artplayer/types/setting"
-import { type Events } from "artplayer/types/events"
+import { ext, notify, pathDir, pathJoin } from "~/utils"
+import Artplayer, { type Option, type Setting, type Events } from "artplayer"
 import artplayerPluginDanmuku from "artplayer-plugin-danmuku"
 import { type Option as DanmukuOption } from "artplayer-plugin-danmuku"
 import artplayerPluginAss from "~/components/artplayer-plugin-ass"
@@ -33,35 +30,125 @@ function safeJsonParse<T = unknown>(str: string | null): T | undefined {
 const Preview = () => {
   const t = useT()
   const { pathname, searchParams } = useRouter()
-  const { proxyLink } = useLink()
+  const { proxyLink, rawLink } = useLink()
   const navigate = useNavigate()
-  const videos = createMemo(() =>
-    objStore.objs.filter((obj) => obj.type === ObjType.VIDEO),
-  )
+  // 直接访问文件 URL 时 objStore.objs 不会被填充，只有 related 有同目录文件列表；
+  // 从目录点进来时两者都可能有，合并去重以兼容两种入口。
+  const videos = createMemo(() => {
+    const map = new Map<string, (typeof objStore.related)[number]>()
+    for (const obj of [...objStore.related, ...objStore.objs]) {
+      if (obj.type === ObjType.VIDEO && !map.has(obj.name)) {
+        map.set(obj.name, obj)
+      }
+    }
+    const list = [...map.values()]
+    // 保证当前视频在列表中，即使 related 未包含自身
+    if (objStore.obj?.name && !list.some((o) => o.name === objStore.obj.name)) {
+      list.push(objStore.obj)
+    }
+    return list
+  })
+  const wasFullscreen = () => {
+    if (!player) return false
+    return !!(player.fullscreen || player.fullscreenWeb)
+  }
+  // 需要走路由重建播放器的格式（自定义 customType 无法通过 switchUrl 直接换源）
+  const NEED_RELOAD_EXTS = ["flv", "m2ts", "m3u8"]
+  const needReload = (name: string) =>
+    NEED_RELOAD_EXTS.includes(ext(name).toLowerCase())
+
+  // 原地切换：不销毁播放器、不跳路由，全屏状态可以保持
+  const switchInPlace = async (obj: (typeof objStore.related)[number]) => {
+    const nextUrl = rawLink(obj)
+    try {
+      // switchUrl 会保留当前播放器实例与全屏状态
+      await player.switchUrl(nextUrl)
+    } catch (e) {
+      console.log("switchUrl failed, fallback to route:", e)
+      return false
+    }
+    // 同步 store，让标题、右键菜单、截图文件名等指向新视频
+    ObjStore.setObj(obj)
+    ObjStore.setRawUrl(nextUrl)
+    // 同步播放器标题（Artplayer 通过 attr 控制 title 显示）
+    player.attr("title", obj.name)
+    // 用 replaceState 更新地址栏，避免路由变化导致组件重建
+    const pageUrl =
+      pathJoin(pathDir(pathname()), obj.name) +
+      "?auto_fullscreen=" +
+      wasFullscreen()
+    window.history.replaceState(window.history.state, "", pageUrl)
+    return true
+  }
+
+  const switchTo = (target?: string) => {
+    if (!target) return
+    const obj = videos().find((v) => v.name === target)
+    // 找到目标对象且格式支持原位切换时，走 switchUrl；否则退回路由跳转
+    if (obj && !needReload(obj.name) && player) {
+      switchInPlace(obj)
+      return
+    }
+    const fullscreen = wasFullscreen()
+    const url =
+      pathJoin(pathDir(pathname()), target) + "?auto_fullscreen=" + fullscreen
+    // 先主动退出全屏，避免全屏元素被路由卸载时浏览器强制退出导致的时序错乱
+    if (document.fullscreenElement) {
+      document
+        .exitFullscreen()
+        .catch(() => {})
+        .finally(() => navigate(url))
+    } else {
+      navigate(url)
+    }
+  }
   const next_video = () => {
-    const index = videos().findIndex((f) => f.name === objStore.obj.name)
-    if (index < videos().length - 1) {
-      navigate(
-        pathJoin(pathDir(location.pathname), videos()[index + 1].name) +
-          "?auto_fullscreen=" +
-          player.fullscreen,
-      )
+    const list = videos()
+    const index = list.findIndex((f) => f.name === objStore.obj.name)
+    if (index >= 0 && index < list.length - 1) {
+      switchTo(list[index + 1].name)
     }
   }
   const previous_video = () => {
-    const index = videos().findIndex((f) => f.name === objStore.obj.name)
+    const list = videos()
+    const index = list.findIndex((f) => f.name === objStore.obj.name)
     if (index > 0) {
-      navigate(
-        pathJoin(pathDir(location.pathname), videos()[index - 1].name) +
-          "?auto_fullscreen=" +
-          player.fullscreen,
-      )
+      switchTo(list[index - 1].name)
     }
   }
   let disposed = false
   let player: Artplayer
   let flvPlayer: mpegts.Player
   let hlsPlayer: Hls
+
+  // 循环播放：Artplayer 的 option.loop 只在初始化时生效，运行时需直接操作原生 video.loop
+  const LOOP_ON_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M4 12v-3a3 3 0 0 1 3 -3h11"></path><polyline points="14 3 17 6 14 9"></polyline><path d="M20 12v3a3 3 0 0 1 -3 3h-11"></path><polyline points="10 21 7 18 10 15"></polyline></svg>'
+  // 关闭态使用同一图标的淡化样式（opacity 降低），保持视觉一致
+  const LOOP_OFF_ICON = LOOP_ON_ICON.replace(
+    'stroke="currentColor"',
+    'stroke="currentColor" opacity="0.4"',
+  )
+  const LOOP_KEY = "video_loop"
+  const applyLoopUI = (on: boolean) => {
+    // Artplayer 在 Component.add 中按 name 把节点挂到实例上，键名即 "loop-button"
+    const btn = (player?.controls as any)?.["loop-button"] as
+      HTMLElement | undefined
+    if (btn) {
+      btn.innerHTML = on ? LOOP_ON_ICON : LOOP_OFF_ICON
+      btn.style.opacity = on ? "1" : "0.6"
+    }
+  }
+  // 是否循环播放。注意：不使用原生 video.loop，改为在 ended 时手动回绕，
+  // 避免原生 loop 与事件回绕双重触发导致的卡顿。
+  let loopEnabled = false
+  const toggleLoop = () => {
+    if (!player?.video) return
+    loopEnabled = !loopEnabled
+    localStorage.setItem(LOOP_KEY, String(loopEnabled))
+    applyLoopUI(loopEnabled)
+    notify.info(loopEnabled ? "循环播放已开启" : "循环播放已关闭")
+  }
 
   // 自定义截图：文件名 = 视频名（去扩展名） + 『hh-mm-ss』
   const doScreenshot = () => {
@@ -78,11 +165,13 @@ const Preview = () => {
     // 固定 hh-mm-ss，始终补零到两位，并用 『』 包裹
     const timeStr = `『${pad(hours)}-${pad(minutes)}-${pad(seconds)}』`
 
-    player.screenshot(`${baseName}_${timeStr}`, true)
+    player.screenshot(`${baseName}_${timeStr}`)
   }
 
+  // 唯一 id，避免路由切换时新旧播放器争抢同一容器
+  const playerId = `video-player-${pathname()}-${Date.now()}`
   let option: Option = {
-    id: pathname(),
+    id: playerId,
     container: "#video-player",
     url: objStore.raw_url,
     title: objStore.obj.name,
@@ -128,8 +217,18 @@ const Preview = () => {
         },
       },
       {
-        name: "custom-screenshot",
+        name: "loop-button",
         index: 12,
+        position: "right",
+        html: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M4 12v-3a3 3 0 0 1 3 -3h11"></path><polyline points="14 3 17 6 14 9"></polyline><path d="M20 12v3a3 3 0 0 1 -3 3h-11"></path><polyline points="10 21 7 18 10 15"></polyline></svg>',
+        tooltip: "Loop: Off",
+        click: function () {
+          toggleLoop()
+        },
+      },
+      {
+        name: "custom-screenshot",
+        index: 13,
         position: "right",
         html: '<svg xmlns="http://www.w3.org/2000/svg" height="22" width="22" viewBox="0 0 50 50"><path d="M 19.402344 6 C 17.019531 6 14.96875 7.679688 14.5 10.011719 L 14.097656 12 L 9 12 C 6.238281 12 4 14.238281 4 17 L 4 38 C 4 40.761719 6.238281 43 9 43 L 41 43 C 43.761719 43 46 40.761719 46 38 L 46 17 C 46 14.238281 43.761719 12 41 12 L 35.902344 12 L 35.5 10.011719 C 35.03125 7.679688 32.980469 6 30.597656 6 Z M 25 17 C 30.519531 17 35 21.480469 35 27 C 35 32.519531 30.519531 37 25 37 C 19.480469 37 15 32.519531 15 27 C 15 21.480469 19.480469 17 25 17 Z M 25 19 C 20.589844 19 17 22.589844 17 27 C 17 31.410156 20.589844 35 25 35 C 29.410156 35 33 31.410156 33 27 C 33 22.589844 29.410156 19 25 19 Z"></path></svg>',
         tooltip: "Screenshot",
@@ -147,6 +246,8 @@ const Preview = () => {
       "webkit-playsinline": true,
       playsInline: true,
       crossOrigin: "anonymous",
+      // 提前缓冲，减少循环回绕时的重新加载卡顿
+      preload: "auto",
     },
     type: ext(objStore.obj.name),
     customType: {
@@ -240,7 +341,7 @@ const Preview = () => {
           setSubtitleVisible(!item.switch)
 
           const menu_sub = option.settings?.find(
-            (_) => _.id === "setting_subtitle",
+            (s) => s.id === "setting_subtitle",
           )
           menu_sub && (menu_sub.tooltip = item.tooltip)
 
@@ -283,7 +384,7 @@ const Preview = () => {
       onSelect: function (item: Setting) {
         if (enableEnhanceAss && ext(item.name).toLowerCase() === "ass") {
           isEnhanceAssMode = true
-          this.emit("artplayer-plugin-ass:switch" as keyof Events, item.url)
+          this.emit("artplayer-plugin-ass:switch" as any, item.url)
           setSubtitleVisible(true)
         } else {
           isEnhanceAssMode = false
@@ -307,13 +408,13 @@ const Preview = () => {
       switch (type) {
         case "ass":
           player.subtitle.show = false
-          player.emit("artplayer-plugin-ass:visible" as keyof Events, visible)
+          player.emit("artplayer-plugin-ass:visible" as any, visible)
           break
 
         case "webvtt":
         default:
           player.subtitle.show = visible
-          player.emit("artplayer-plugin-ass:visible" as keyof Events, false)
+          player.emit("artplayer-plugin-ass:visible" as any, false)
           break
       }
     }
@@ -343,10 +444,22 @@ const Preview = () => {
     if (disposed) return
 
     player = new Artplayer(option)
+    // 应用持久化的循环状态（不使用原生 video.loop，避免与事件回绕双重触发）
+    loopEnabled = localStorage.getItem(LOOP_KEY) === "true"
+    applyLoopUI(loopEnabled)
     const auto_fullscreen = searchParams["auto_fullscreen"] === "true"
-    player.on("ready", () => {
-      player.fullscreen = auto_fullscreen
-    })
+    // 浏览器要求 Fullscreen 必须由用户手势触发，ready 回调里自动进入全屏可能被拒绝；
+    // 这里仅在允许时尝试，并吞掉异常，避免切换视频时报错。
+    if (auto_fullscreen) {
+      const enterFullscreen = () => {
+        try {
+          player.fullscreen = true
+        } catch (e) {
+          console.log("Auto fullscreen rejected by browser:", e)
+        }
+      }
+      player.once("ready", enterFullscreen)
+    }
     if (danmu) {
       player.on("artplayerPluginDanmuku:config", (option) => {
         const {
@@ -379,6 +492,15 @@ const Preview = () => {
       })
     }
     player.on("video:ended", () => {
+      if (loopEnabled) {
+        // 单一回绕路径：直接回到起点并继续播放，不做多余 seek/重建
+        player.video.currentTime = 0
+        player.video.play().catch(() => {})
+        // 保持控制栏/遮罩状态，避免 Artplayer 在 ended 时把 UI 切回初始态
+        player.controls.show = false
+        player.mask.show = false
+        return
+      }
       if (!autoNext()) return
       next_video()
     })
@@ -393,7 +515,10 @@ const Preview = () => {
   })
   onCleanup(() => {
     disposed = true
-    if (player && player.video) player.video.src = ""
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {})
+    }
+    // 先销毁播放器（会处理 video.src），再销毁自定义类型播放器
     player?.destroy()
     flvPlayer?.destroy()
     hlsPlayer?.destroy()

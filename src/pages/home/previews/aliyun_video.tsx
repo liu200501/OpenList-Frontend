@@ -57,24 +57,38 @@ const Preview = () => {
   const { pathname, searchParams } = useRouter()
   const { proxyLink } = useLink()
   const navigate = useNavigate()
-  const videos = createMemo(() =>
-    objStore.objs.filter((obj) => obj.type === ObjType.VIDEO),
-  )
+  // 直接访问文件 URL 时 objStore.objs 不会被填充，只有 related 有同目录文件列表；
+  // 从目录点进来时两者都可能有，合并去重以兼容两种入口。
+  const videos = createMemo(() => {
+    const map = new Map<string, (typeof objStore.related)[number]>()
+    for (const obj of [...objStore.related, ...objStore.objs]) {
+      if (obj.type === ObjType.VIDEO && !map.has(obj.name)) {
+        map.set(obj.name, obj)
+      }
+    }
+    const list = [...map.values()]
+    if (objStore.obj?.name && !list.some((o) => o.name === objStore.obj.name)) {
+      list.push(objStore.obj)
+    }
+    return list
+  })
   const next_video = () => {
-    const index = videos().findIndex((f) => f.name === objStore.obj.name)
-    if (index < videos().length - 1) {
+    const list = videos()
+    const index = list.findIndex((f) => f.name === objStore.obj.name)
+    if (index >= 0 && index < list.length - 1) {
       navigate(
-        pathJoin(pathDir(location.pathname), videos()[index + 1].name) +
+        pathJoin(pathDir(location.pathname), list[index + 1].name) +
           "?auto_fullscreen=" +
           player.fullscreen,
       )
     }
   }
   const previous_video = () => {
-    const index = videos().findIndex((f) => f.name === objStore.obj.name)
+    const list = videos()
+    const index = list.findIndex((f) => f.name === objStore.obj.name)
     if (index > 0) {
       navigate(
-        pathJoin(pathDir(location.pathname), videos()[index - 1].name) +
+        pathJoin(pathDir(location.pathname), list[index - 1].name) +
           "?auto_fullscreen=" +
           player.fullscreen,
       )

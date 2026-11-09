@@ -8,6 +8,7 @@ export enum ObjType {
   AUDIO,
   TEXT,
   IMAGE,
+  ARCHIVE,
 }
 
 export interface Obj {
@@ -20,6 +21,7 @@ export interface Obj {
   thumb: string
   type: ObjType
   mount_details?: MountDetails
+  path?: string
 }
 
 export type StoreObj = Obj & {

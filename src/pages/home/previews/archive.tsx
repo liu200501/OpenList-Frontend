@@ -23,6 +23,7 @@ import {
   Switch,
   Suspense,
   onCleanup,
+  type Component,
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import {
@@ -904,9 +905,14 @@ const Preview = () => {
                     }}
                   >
                     <Dynamic
-                      component={currentPreview()?.component}
+                      component={
+                        currentPreview()?.component as Component<{
+                          images?: Obj[]
+                          navigate?: (name: string) => void
+                        }>
+                      }
                       images={files().filter((f) => f.type === ObjType.IMAGE)}
-                      navigate={(name) => {
+                      navigate={(name: string) => {
                         changeFile(name)
                       }}
                     />

@@ -30,6 +30,7 @@ import {
   onMount,
   Show,
   Switch,
+  type JSX,
 } from "solid-js"
 import {
   BoxWithFullScreen,
@@ -377,7 +378,7 @@ const Preview = (props: PreviewProps) => {
   const cursor = () =>
     scale() > 1 ? (dragging() ? "grabbing" : "grab") : "default"
 
-  const imgStyle = () => ({
+  const imgStyle = (): JSX.CSSProperties => ({
     "max-width": "100%",
     "max-height": "100%",
     ...(fitMode() === "contain"
