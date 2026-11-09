@@ -20,6 +20,7 @@ import artplayerPluginAss from "~/components/artplayer-plugin-ass"
 import Hls from "hls.js"
 import { currentLang } from "~/app/i18n"
 import { AutoHeightPlugin, VideoBox } from "./video_box"
+import { FloatingPlayer } from "./floating_player"
 import { ArtPlayerIconsSubtitle } from "~/components/icons"
 import { useNavigate } from "@solidjs/router"
 import { TiWarning } from "solid-icons/ti"
@@ -95,6 +96,29 @@ const Preview = () => {
     }
   }
   let player: Artplayer
+  let floatingPlayer: FloatingPlayer
+
+  const FLOAT_ON_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><rect x="3" y="4" width="18" height="14" rx="2"></rect><rect x="12" y="11" width="7" height="5" rx="1" fill="currentColor"></rect></svg>'
+  const FLOAT_OFF_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><rect x="3" y="4" width="18" height="14" rx="2"></rect><path d="M12 11l7 5m0 -5l-7 5" opacity="0.6"></path></svg>'
+  const applyFloatUI = (on: boolean) => {
+    const btn = (player?.controls as any)?.["float-button"] as
+      HTMLElement | undefined
+    if (btn) {
+      btn.innerHTML = on ? FLOAT_ON_ICON : FLOAT_OFF_ICON
+      btn.style.opacity = on ? "1" : "0.7"
+    }
+  }
+  const toggleFloat = () => {
+    if (!floatingPlayer) return
+    floatingPlayer.toggle()
+    applyFloatUI(floatingPlayer.enabled)
+    notify.info(
+      floatingPlayer.enabled ? "已切换到浮窗（可拖动/缩放）" : "已还原播放器",
+    )
+  }
+
   let option: Option = {
     id: pathname(),
     container: "#video-player",
@@ -114,6 +138,16 @@ const Preview = () => {
         },
       },
       {
+        name: "float-button",
+        index: 14,
+        position: "right",
+        html: FLOAT_OFF_ICON,
+        tooltip: "Float Window",
+        click: function () {
+          toggleFloat()
+        },
+      },
+      {
         name: "next-button",
         index: 11,
         position: "left",
@@ -130,7 +164,8 @@ const Preview = () => {
     aspectRatio: true,
     setting: true,
     hotkey: true,
-    pip: true,
+    // 关闭浏览器原生画中画，改用自定义可调尺寸浮窗
+    pip: false,
     mutex: true,
     fullscreen: true,
     fullscreenWeb: true,
@@ -348,6 +383,10 @@ const Preview = () => {
         }
       })
       player = new Artplayer(option)
+      floatingPlayer = new FloatingPlayer(player, (enabled) => {
+        applyFloatUI(enabled)
+      })
+      player.once("ready", () => applyFloatUI(floatingPlayer.enabled))
       let auto_fullscreen: boolean
       switch (searchParams["auto_fullscreen"]) {
         case "true":
@@ -439,6 +478,7 @@ const Preview = () => {
   }
   onCleanup(() => {
     setShouldKeepState(false)
+    floatingPlayer?.destroy()
     if (player) {
       player.fullscreenWeb = false
       player.fullscreen = false

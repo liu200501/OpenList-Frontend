@@ -1,5 +1,45 @@
 /* Some custom styles for ArtPlayer */
 
+/* ===== 浮窗（自定义画中画）视觉优化 =====
+ * 注意：这里只做“尺寸/图标/字体”这类视觉微调，
+ * 完全不干预 .art-bottom / .art-controls / .art-progress 的显隐，
+ * 底部控制栏的显隐与布局交由全局自定义 CSS/JS 统一接管。 */
+
+/* 浮窗内统一缩小图标与控件尺寸，避免小窗口里控件拥挤 */
+.artplayer-float-window .art-video-player {
+  --art-control-height: 32px;
+  --art-control-icon-size: 20px;
+  --art-bottom-height: 48px;
+  --art-bottom-gap: 6px;
+  --art-padding: 6px;
+  --art-settings-icon-size: 22px;
+  --art-settings-max-height: 70%;
+  --art-selector-max-height: 70%;
+  --art-subtitle-font-size: 14px;
+}
+
+/* tiny 下进一步缩小控件尺寸 */
+.artplayer-float-window.is-tiny .art-video-player {
+  --art-control-height: 26px;
+  --art-control-icon-size: 16px;
+  --art-bottom-height: 36px;
+  --art-padding: 4px;
+}
+
+/* 小窗里设置/选择面板不要溢出，允许滚动 */
+.artplayer-float-window .art-settings {
+  max-height: 80% !important;
+  overflow-y: auto;
+}
+
+/* 小窗里中央大播放按钮适当缩小，避免占满画面 */
+.artplayer-float-window.is-tiny .art-state {
+  --art-state-size: 40px;
+}
+.artplayer-float-window.is-small .art-state {
+  --art-state-size: 52px;
+}
+
 /* Hide previous and next buttons on small screens */
 @media (max-width: 440px) {
   .art-video-player .art-controls .art-control-previous-button,

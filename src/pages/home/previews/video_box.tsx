@@ -20,6 +20,8 @@ import { BsArrowRight } from "solid-icons/bs"
 
 Artplayer.PLAYBACK_RATE = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4]
 Artplayer.REMOVE_SRC_WHEN_DESTROY = true
+// 控制栏自动隐藏时间改为 1 秒（默认 3 秒）
+Artplayer.CONTROL_HIDE_TIME = 1000
 
 export const players: {
   icon: string
@@ -119,13 +121,21 @@ export const AutoHeightPlugin = (player: Artplayer) => {
   const { $container, $video } = player.template
   const $videoBox = $container.parentElement!
 
+  // 浮窗（自定义可调尺寸画中画）模式下，容器被移入 fixed 浮层，
+  // 此时不应再由 AutoHeight 覆盖其尺寸。
+  const inFloatWindow = () =>
+    $container.parentElement?.classList.contains("artplayer-float-window") ??
+    false
+
   player.on("ready", () => {
+    if (inFloatWindow()) return
     const offsetBottom = "1.75rem" // position bottom of "More" button + padding
     $videoBox.style.maxHeight = `calc(100vh - ${$videoBox.offsetTop}px - ${offsetBottom})`
     $videoBox.style.minHeight = "320px" // min width of mobile phone
     player.autoHeight()
   })
   player.on("resize", () => {
+    if (inFloatWindow()) return
     player.autoHeight()
   })
   player.on("error", () => {

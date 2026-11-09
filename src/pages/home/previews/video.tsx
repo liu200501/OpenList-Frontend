@@ -12,6 +12,7 @@ import mpegts from "mpegts.js"
 import Hls from "hls.js"
 import { currentLang } from "~/app/i18n"
 import { AutoHeightPlugin, VideoBox } from "./video_box"
+import { FloatingPlayer } from "./floating_player"
 import { ArtPlayerIconsSubtitle } from "~/components/icons"
 import { useNavigate } from "@solidjs/router"
 import "./artplayer.css"
@@ -120,6 +121,29 @@ const Preview = () => {
   let player: Artplayer
   let flvPlayer: mpegts.Player
   let hlsPlayer: Hls
+  let floatingPlayer: FloatingPlayer
+
+  // 浮窗（可调任意尺寸的画中画）图标
+  const FLOAT_ON_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><rect x="3" y="4" width="18" height="14" rx="2"></rect><rect x="12" y="11" width="7" height="5" rx="1" fill="currentColor"></rect></svg>'
+  const FLOAT_OFF_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><rect x="3" y="4" width="18" height="14" rx="2"></rect><path d="M12 11l7 5m0 -5l-7 5" opacity="0.6"></path></svg>'
+  const applyFloatUI = (on: boolean) => {
+    const btn = (player?.controls as any)?.["float-button"] as
+      HTMLElement | undefined
+    if (btn) {
+      btn.innerHTML = on ? FLOAT_ON_ICON : FLOAT_OFF_ICON
+      btn.style.opacity = on ? "1" : "0.7"
+    }
+  }
+  const toggleFloat = () => {
+    if (!floatingPlayer) return
+    floatingPlayer.toggle()
+    applyFloatUI(floatingPlayer.enabled)
+    notify.info(
+      floatingPlayer.enabled ? "已切换到浮窗（可拖动/缩放）" : "已还原播放器",
+    )
+  }
 
   // 循环播放：Artplayer 的 option.loop 只在初始化时生效，运行时需直接操作原生 video.loop
   const LOOP_ON_ICON =
@@ -187,7 +211,8 @@ const Preview = () => {
     screenshot: false,
     setting: true,
     hotkey: true,
-    pip: true,
+    // 关闭浏览器原生画中画，改用自定义可调尺寸浮窗
+    pip: false,
     mutex: true,
     fullscreen: true,
     fullscreenWeb: true,
@@ -224,6 +249,16 @@ const Preview = () => {
         tooltip: "Loop: Off",
         click: function () {
           toggleLoop()
+        },
+      },
+      {
+        name: "float-button",
+        index: 14,
+        position: "right",
+        html: FLOAT_OFF_ICON,
+        tooltip: "Float Window",
+        click: function () {
+          toggleFloat()
         },
       },
       {
@@ -444,6 +479,11 @@ const Preview = () => {
     if (disposed) return
 
     player = new Artplayer(option)
+    floatingPlayer = new FloatingPlayer(player, (enabled) => {
+      applyFloatUI(enabled)
+    })
+    // 若持久化状态为浮窗，启动后同步按钮图标
+    player.once("ready", () => applyFloatUI(floatingPlayer.enabled))
     // 应用持久化的循环状态（不使用原生 video.loop，避免与事件回绕双重触发）
     loopEnabled = localStorage.getItem(LOOP_KEY) === "true"
     applyLoopUI(loopEnabled)
@@ -518,6 +558,7 @@ const Preview = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {})
     }
+    floatingPlayer?.destroy()
     // 先销毁播放器（会处理 video.src），再销毁自定义类型播放器
     player?.destroy()
     flvPlayer?.destroy()
