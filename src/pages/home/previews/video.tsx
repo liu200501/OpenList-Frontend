@@ -195,6 +195,49 @@ const Preview = () => {
     }
   }
 
+  // ── 滚轮切集开关 ──
+  // 开启后：滚轮上 = 上一条视频，滚轮下 = 下一条视频；关闭恢复播放器默认行为。
+  const WHEEL_SWITCH_KEY = "video_wheel_switch"
+  let wheelSwitchEnabled = localStorage.getItem(WHEEL_SWITCH_KEY) === "true"
+  let wheelLocked = false
+  let wheelLockTimer: number | undefined
+  const onPlayerWheel = (e: WheelEvent) => {
+    if (!wheelSwitchEnabled) return
+    // 只处理纵向滚动；横向滚轮（触控板左右滑）忽略
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+    // 阻止播放器默认的音量/进度滚轮行为
+    e.preventDefault()
+    e.stopPropagation()
+    if (wheelLocked) return
+    // 节流：一次滚动手势只切一集，避免触控板惯性连切
+    wheelLocked = true
+    if (wheelLockTimer !== undefined) window.clearTimeout(wheelLockTimer)
+    wheelLockTimer = window.setTimeout(() => {
+      wheelLocked = false
+    }, 350)
+    if (e.deltaY < 0) previous_video()
+    else next_video()
+  }
+  // 右键菜单项文案元素（随开关状态更新）
+  const wheelSwitchLabelEl = document.createElement("span")
+  const renderWheelSwitchLabel = () => {
+    wheelSwitchLabelEl.textContent = wheelSwitchEnabled
+      ? "滚轮切集：开"
+      : "滚轮切集：关"
+  }
+  renderWheelSwitchLabel()
+  const setWheelSwitch = (on: boolean) => {
+    wheelSwitchEnabled = on
+    wheelLocked = false
+    if (wheelLockTimer !== undefined) {
+      window.clearTimeout(wheelLockTimer)
+      wheelLockTimer = undefined
+    }
+    localStorage.setItem(WHEEL_SWITCH_KEY, String(on))
+    renderWheelSwitchLabel()
+    notify.info(on ? "滚轮切集已开启" : "滚轮切集已关闭")
+  }
+
   // ── 全屏选集面板 ──
   // 挂到播放器容器内部，跟随全屏元素显示；用绝对定位覆盖在视频上方。
   const EPISODE_LIST_ICON =
@@ -428,6 +471,17 @@ const Preview = () => {
     autoPlayback: true,
     autoOrientation: true,
     airplay: true,
+    // 自定义右键菜单：滚轮切集开关
+    contextmenu: [
+      {
+        name: "wheel-switch",
+        // Artplayer 的 html 只接受 string | HTMLElement，用元素承载动态文案
+        html: wheelSwitchLabelEl,
+        click: () => {
+          setWheelSwitch(!wheelSwitchEnabled)
+        },
+      },
+    ],
   }
   const subtitle = objStore.related.filter((obj) => {
     for (const ext of [".srt", ".ass", ".vtt"]) {
@@ -633,6 +687,10 @@ const Preview = () => {
         )
       })
     }
+    // 滚轮切集：恢复持久化状态并绑定监听（监听在播放器根元素上，浮窗的 wheel 会转发到这里）
+    wheelSwitchEnabled = localStorage.getItem(WHEEL_SWITCH_KEY) === "true"
+    const $playerEl = player.template.$player as HTMLElement | undefined
+    $playerEl?.addEventListener("wheel", onPlayerWheel, { passive: false })
     // 提前回绕：每次时间推进时检查是否接近结尾
     player.video.addEventListener("timeupdate", tryRewindForLoop)
     // seek 完成后复位标记，允许下一轮再次触发
@@ -661,6 +719,12 @@ const Preview = () => {
   })
   onCleanup(() => {
     disposed = true
+    if (wheelLockTimer !== undefined) {
+      window.clearTimeout(wheelLockTimer)
+      wheelLockTimer = undefined
+    }
+    const $playerEl = player?.template?.$player as HTMLElement | undefined
+    $playerEl?.removeEventListener("wheel", onPlayerWheel)
     if (player?.video) {
       player.video.removeEventListener("timeupdate", tryRewindForLoop)
     }
