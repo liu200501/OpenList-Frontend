@@ -10,6 +10,28 @@ on:
         description: "Target version (e.g. 1.0.0), tag will be v<version>"
         required: true
         type: string
+      tag:
+        description: "Release tag name (leave empty to use v<version>)"
+        required: false
+        type: string
+      title:
+        description: "Release title (leave empty to use 'Release <tag>')"
+        required: false
+        type: string
+      description:
+        description: "Release description / notes (leave empty to auto-generate)"
+        required: false
+        type: string
+      draft:
+        description: "Create as draft release"
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: "Mark as prerelease"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -42,7 +64,11 @@ jobs:
         run: |
           set -e
           VERSION="${{ github.event.inputs.version }}"
-          echo "Preparing release v$VERSION"
+          RELEASE_TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$RELEASE_TAG" ]; then
+            RELEASE_TAG="v$VERSION"
+          fi
+          echo "Preparing release $RELEASE_TAG"
 
           # 配置 git 身份（不依赖任何 Secret）
           git config user.name "github-actions[bot]"
@@ -52,24 +78,28 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp
           mv package.json.tmp package.json
           git add package.json
-          git commit -m "chore: release v$VERSION" --no-verify || echo "No changes to commit"
+          git commit -m "chore: release $RELEASE_TAG" --no-verify || echo "No changes to commit"
 
           # 删除旧的 edge 标签，避免干扰 git describe
           git tag -d edge 2>/dev/null || true
 
           # 打上正式版本标签
-          git tag -a "v$VERSION" -m "Release v$VERSION" -f
+          git tag -a "$RELEASE_TAG" -m "Release $RELEASE_TAG" -f
 
           # 推送提交和标签回仓库（Release 创建时需要用到标签）
           git push origin HEAD:${{ github.ref_name }} || git push origin HEAD
-          git push origin "v$VERSION" -f
+          git push origin "$RELEASE_TAG" -f
 
       # ============ 统一拿到本次构建用的标签 ============
       - name: Determine tag
-        id: tag
+        id: release_tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            RELEASE_TAG="${{ github.event.inputs.tag }}"
+            if [ -z "$RELEASE_TAG" ]; then
+              RELEASE_TAG="v${{ github.event.inputs.version }}"
+            fi
+            echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
@@ -106,10 +136,34 @@ jobs:
       # ============ 创建 Release 并上传产物 ============
       - name: Create Release
         run: |
-          gh release create \
-            "${{ steps.tag.outputs.tag }}" \
-            --title "Release ${{ steps.tag.outputs.tag }}" \
-            --generate-notes \
+          TAG="${{ steps.release_tag.outputs.tag }}"
+          TITLE="${{ github.event.inputs.title }}"
+          DESCRIPTION="${{ github.event.inputs.description }}"
+          DRAFT="${{ github.event.inputs.draft }}"
+          PRERELEASE="${{ github.event.inputs.prerelease }}"
+
+          if [ -z "$TITLE" ]; then
+            TITLE="Release $TAG"
+          fi
+
+          ARGS=(--title "$TITLE")
+
+          if [ -n "$DESCRIPTION" ]; then
+            ARGS+=(--notes "$DESCRIPTION")
+          else
+            ARGS+=(--generate-notes)
+          fi
+
+          if [ "$DRAFT" = "true" ]; then
+            ARGS+=(--draft)
+          fi
+
+          if [ "$PRERELEASE" = "true" ]; then
+            ARGS+=(--prerelease)
+          fi
+
+          gh release create "$TAG" \
+            "${ARGS[@]}" \
             dist/openlist-frontend-dist-v*.tar.gz \
             lite-dist/openlist-frontend-dist-lite-v*.tar.gz \
             dist/i18n.tar.gz
