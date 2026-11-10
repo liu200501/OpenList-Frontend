@@ -17,6 +17,7 @@ import { ArtPlayerIconsSubtitle } from "~/components/icons"
 import { useNavigate } from "@solidjs/router"
 import "./artplayer.css"
 import { useT } from "~/hooks"
+import { isObjFavorite, toggleObjFavorite } from "../folder/collect"
 
 // 本地安全 JSON 解析：解析失败返回 undefined，不抛异常
 function safeJsonParse<T = unknown>(str: string | null): T | undefined {
@@ -73,6 +74,8 @@ const Preview = () => {
     ObjStore.setRawUrl(nextUrl)
     // 同步播放器标题（Artplayer 通过 attr 控制 title 显示）
     player.attr("title", obj.name)
+    // 切换视频后刷新收藏按钮状态
+    applyFavoriteUI()
     // 用 replaceState 更新地址栏，避免路由变化导致组件重建
     const pageUrl =
       pathJoin(pathDir(pathname()), obj.name) +
@@ -347,6 +350,30 @@ const Preview = () => {
     player.screenshot(`${baseName}_${timeStr}`)
   }
 
+  // ── 收藏按钮 ──
+  // 当前视频是否已收藏（目录 = 当前文件所在目录）。
+  const currentDir = () => pathDir(pathname())
+  const isFavorited = () => isObjFavorite(currentDir(), objStore.obj)
+  const starIcon = (favorited: boolean) => {
+    const color = favorited ? "#f59e0b" : "currentColor"
+    const d = favorited
+      ? '<path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" fill="currentColor"></path>'
+      : '<path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" fill="none" stroke="currentColor" stroke-width="2"></path>'
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:${color}">${d}</svg>`
+  }
+  const applyFavoriteUI = () => {
+    const btn = (player?.controls as any)?.["favorite-button"] as
+      HTMLElement | undefined
+    if (btn) {
+      btn.innerHTML = starIcon(isFavorited())
+    }
+  }
+  const toggleFavorite = async () => {
+    // toggleObjFavorite 内部处理成功/失败状态与提示，这里只同步按钮图标
+    await toggleObjFavorite(currentDir(), objStore.obj)
+    applyFavoriteUI()
+  }
+
   // 唯一 id，避免路由切换时新旧播放器争抢同一容器
   const playerId = `video-player-${pathname()}-${Date.now()}`
   let option: Option = {
@@ -394,6 +421,16 @@ const Preview = () => {
         tooltip: "Next",
         click: function () {
           next_video()
+        },
+      },
+      {
+        name: "favorite-button",
+        index: 8,
+        position: "right",
+        html: starIcon(isObjFavorite(pathDir(pathname()), objStore.obj)),
+        tooltip: t("home.toolbar.collect"),
+        click: function () {
+          toggleFavorite()
         },
       },
       {
@@ -672,6 +709,8 @@ const Preview = () => {
     // 应用持久化的循环状态到原生 video.loop
     loopEnabled = localStorage.getItem(LOOP_KEY) === "true"
     player.once("ready", syncLoop)
+    // 收藏状态可能在收藏列表异步加载后才准确，ready 后再同步一次图标
+    player.once("ready", applyFavoriteUI)
     const auto_fullscreen = searchParams["auto_fullscreen"] === "true"
     // 浏览器要求 Fullscreen 必须由用户手势触发，ready 回调里自动进入全屏可能被拒绝；
     // 这里仅在允许时尝试，并吞掉异常，避免切换视频时报错。
