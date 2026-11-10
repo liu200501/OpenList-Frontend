@@ -119,6 +119,83 @@ const Preview = () => {
     )
   }
 
+  // ── 全屏选集面板 ──
+  const EPISODE_LIST_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>'
+  let episodePanel: HTMLDivElement | undefined
+
+  const closeEpisodePanel = () => {
+    if (episodePanel) {
+      episodePanel.remove()
+      episodePanel = undefined
+    }
+  }
+
+  const switchEpisode = (name: string) => {
+    navigate(
+      pathJoin(pathDir(location.pathname), name) +
+        "?auto_fullscreen=" +
+        (player ? player.fullscreen : false),
+    )
+  }
+
+  const openEpisodePanel = () => {
+    if (!player) return
+    if (episodePanel) {
+      closeEpisodePanel()
+      return
+    }
+    const list = videos()
+    if (list.length === 0) return
+
+    const panel = document.createElement("div")
+    panel.className = "art-episode-panel"
+    panel.addEventListener("click", (e) => e.stopPropagation())
+
+    const header = document.createElement("div")
+    header.className = "art-episode-panel__header"
+    header.textContent = `选集（共 ${list.length} 集）`
+    const closeBtn = document.createElement("button")
+    closeBtn.className = "art-episode-panel__close"
+    closeBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+    closeBtn.onclick = (e) => {
+      e.stopPropagation()
+      closeEpisodePanel()
+    }
+    header.appendChild(closeBtn)
+
+    const listEl = document.createElement("div")
+    listEl.className = "art-episode-panel__list"
+    list.forEach((item, i) => {
+      const row = document.createElement("button")
+      row.className = "art-episode-panel__item"
+      if (item.name === objStore.obj.name) {
+        row.classList.add("is-active")
+      }
+      const indexEl = document.createElement("span")
+      indexEl.className = "art-episode-panel__index"
+      indexEl.textContent = String(i + 1)
+      const nameEl = document.createElement("span")
+      nameEl.className = "art-episode-panel__name"
+      nameEl.title = item.name
+      nameEl.textContent = item.name
+      row.appendChild(indexEl)
+      row.appendChild(nameEl)
+      row.onclick = (e) => {
+        e.stopPropagation()
+        closeEpisodePanel()
+        if (item.name !== objStore.obj.name) switchEpisode(item.name)
+      }
+      listEl.appendChild(row)
+    })
+
+    panel.appendChild(header)
+    panel.appendChild(listEl)
+    player.template.$player.appendChild(panel)
+    episodePanel = panel
+  }
+
   let option: Option = {
     id: pathname(),
     container: "#video-player",
@@ -145,6 +222,16 @@ const Preview = () => {
         tooltip: "Float Window",
         click: function () {
           toggleFloat()
+        },
+      },
+      {
+        name: "episode-button",
+        index: 9,
+        position: "right",
+        html: EPISODE_LIST_ICON,
+        tooltip: "选集",
+        click: function () {
+          openEpisodePanel()
         },
       },
       {
@@ -478,6 +565,7 @@ const Preview = () => {
   }
   onCleanup(() => {
     setShouldKeepState(false)
+    closeEpisodePanel()
     floatingPlayer?.destroy()
     if (player) {
       player.fullscreenWeb = false

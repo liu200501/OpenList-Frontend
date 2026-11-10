@@ -163,15 +163,91 @@ const Preview = () => {
       btn.style.opacity = on ? "1" : "0.6"
     }
   }
-  // 是否循环播放。注意：不使用原生 video.loop，改为在 ended 时手动回绕，
-  // 避免原生 loop 与事件回绕双重触发导致的卡顿。
+  // 是否循环播放。使用原生 video.loop：由媒体内部完成回绕，
+  // 不会触发 ended 后的重新初始化/重新 seek，循环衔接最平滑。
   let loopEnabled = false
+  const syncLoop = () => {
+    if (player?.video) player.video.loop = loopEnabled
+    applyLoopUI(loopEnabled)
+  }
   const toggleLoop = () => {
     if (!player?.video) return
     loopEnabled = !loopEnabled
+    player.video.loop = loopEnabled
     localStorage.setItem(LOOP_KEY, String(loopEnabled))
     applyLoopUI(loopEnabled)
     notify.info(loopEnabled ? "循环播放已开启" : "循环播放已关闭")
+  }
+
+  // ── 全屏选集面板 ──
+  // 挂到播放器容器内部，跟随全屏元素显示；用绝对定位覆盖在视频上方。
+  const EPISODE_LIST_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>'
+  let episodePanel: HTMLDivElement | undefined
+
+  const closeEpisodePanel = () => {
+    if (episodePanel) {
+      episodePanel.remove()
+      episodePanel = undefined
+    }
+  }
+
+  const openEpisodePanel = () => {
+    if (!player) return
+    if (episodePanel) {
+      closeEpisodePanel()
+      return
+    }
+    const list = videos()
+    if (list.length === 0) return
+
+    const panel = document.createElement("div")
+    panel.className = "art-episode-panel"
+    // 阻止点击事件冒泡到播放器，避免触发暂停/播放
+    panel.addEventListener("click", (e) => e.stopPropagation())
+
+    const header = document.createElement("div")
+    header.className = "art-episode-panel__header"
+    header.textContent = `选集（共 ${list.length} 集）`
+    const closeBtn = document.createElement("button")
+    closeBtn.className = "art-episode-panel__close"
+    closeBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+    closeBtn.onclick = (e) => {
+      e.stopPropagation()
+      closeEpisodePanel()
+    }
+    header.appendChild(closeBtn)
+
+    const listEl = document.createElement("div")
+    listEl.className = "art-episode-panel__list"
+    list.forEach((item, i) => {
+      const row = document.createElement("button")
+      row.className = "art-episode-panel__item"
+      if (item.name === objStore.obj.name) {
+        row.classList.add("is-active")
+      }
+      const indexEl = document.createElement("span")
+      indexEl.className = "art-episode-panel__index"
+      indexEl.textContent = String(i + 1)
+      const nameEl = document.createElement("span")
+      nameEl.className = "art-episode-panel__name"
+      nameEl.title = item.name
+      nameEl.textContent = item.name
+      row.appendChild(indexEl)
+      row.appendChild(nameEl)
+      row.onclick = (e) => {
+        e.stopPropagation()
+        closeEpisodePanel()
+        if (item.name !== objStore.obj.name) switchTo(item.name)
+      }
+      listEl.appendChild(row)
+    })
+
+    panel.appendChild(header)
+    panel.appendChild(listEl)
+    player.template.$player.appendChild(panel)
+    episodePanel = panel
   }
 
   // 自定义截图：文件名 = 视频名（去扩展名） + 『hh-mm-ss』
@@ -249,6 +325,16 @@ const Preview = () => {
         tooltip: "Loop: Off",
         click: function () {
           toggleLoop()
+        },
+      },
+      {
+        name: "episode-button",
+        index: 9,
+        position: "right",
+        html: EPISODE_LIST_ICON,
+        tooltip: "选集",
+        click: function () {
+          openEpisodePanel()
         },
       },
       {
@@ -484,9 +570,9 @@ const Preview = () => {
     })
     // 若持久化状态为浮窗，启动后同步按钮图标
     player.once("ready", () => applyFloatUI(floatingPlayer.enabled))
-    // 应用持久化的循环状态（不使用原生 video.loop，避免与事件回绕双重触发）
+    // 应用持久化的循环状态到原生 video.loop
     loopEnabled = localStorage.getItem(LOOP_KEY) === "true"
-    applyLoopUI(loopEnabled)
+    player.once("ready", syncLoop)
     const auto_fullscreen = searchParams["auto_fullscreen"] === "true"
     // 浏览器要求 Fullscreen 必须由用户手势触发，ready 回调里自动进入全屏可能被拒绝；
     // 这里仅在允许时尝试，并吞掉异常，避免切换视频时报错。
@@ -532,15 +618,8 @@ const Preview = () => {
       })
     }
     player.on("video:ended", () => {
-      if (loopEnabled) {
-        // 单一回绕路径：直接回到起点并继续播放，不做多余 seek/重建
-        player.video.currentTime = 0
-        player.video.play().catch(() => {})
-        // 保持控制栏/遮罩状态，避免 Artplayer 在 ended 时把 UI 切回初始态
-        player.controls.show = false
-        player.mask.show = false
-        return
-      }
+      // 开启原生循环时由 video.loop 自动回绕，这里无需处理
+      if (loopEnabled) return
       if (!autoNext()) return
       next_video()
     })
@@ -555,6 +634,7 @@ const Preview = () => {
   })
   onCleanup(() => {
     disposed = true
+    closeEpisodePanel()
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {})
     }

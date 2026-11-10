@@ -56,3 +56,121 @@
     display: none;
   }
 }
+
+/* ===== 全屏选集面板 ===== */
+.art-episode-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  max-height: 60%;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 20, 20, 0.94);
+  color: #eee;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  animation: art-episode-panel-in 0.18s ease-out;
+}
+
+@keyframes art-episode-panel-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.art-episode-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  flex: 0 0 auto;
+}
+
+.art-episode-panel__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.art-episode-panel__close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.art-episode-panel__list {
+  overflow-y: auto;
+  padding: 6px 8px 10px;
+  flex: 1 1 auto;
+}
+
+.art-episode-panel__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  margin: 2px 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #ddd;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.art-episode-panel__item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.art-episode-panel__item.is-active {
+  background: var(--art-theme, rgba(255, 255, 255, 0.18));
+  color: #fff;
+  font-weight: 600;
+}
+
+.art-episode-panel__index {
+  flex: 0 0 auto;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  line-height: 22px;
+  text-align: center;
+}
+
+.art-episode-panel__name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 440px) {
+  .art-episode-panel {
+    max-height: 70%;
+  }
+}
