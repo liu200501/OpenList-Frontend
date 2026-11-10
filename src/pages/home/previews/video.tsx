@@ -238,6 +238,26 @@ const Preview = () => {
     notify.info(on ? "滚轮切集已开启" : "滚轮切集已关闭")
   }
 
+  // ── 总是静音启动开关 ──
+  // 开启后：每次（含切集）启动播放器都默认静音；关闭恢复正常音量启动。
+  const MUTE_ON_START_KEY = "video_mute_on_start"
+  let muteOnStartEnabled = localStorage.getItem(MUTE_ON_START_KEY) === "true"
+  const muteSwitchLabelEl = document.createElement("span")
+  const renderMuteSwitchLabel = () => {
+    muteSwitchLabelEl.textContent = muteOnStartEnabled
+      ? "静音启动：开"
+      : "静音启动：关"
+  }
+  renderMuteSwitchLabel()
+  const setMuteOnStart = (on: boolean) => {
+    muteOnStartEnabled = on
+    localStorage.setItem(MUTE_ON_START_KEY, String(on))
+    renderMuteSwitchLabel()
+    // 立即把当前播放器同步到目标状态，避免开关后无反馈
+    if (player?.video) player.muted = on
+    notify.info(on ? "已开启静音启动" : "已关闭静音启动")
+  }
+
   // ── 全屏选集面板 ──
   // 挂到播放器容器内部，跟随全屏元素显示；用绝对定位覆盖在视频上方。
   const EPISODE_LIST_ICON =
@@ -471,7 +491,7 @@ const Preview = () => {
     autoPlayback: true,
     autoOrientation: true,
     airplay: true,
-    // 自定义右键菜单：滚轮切集开关
+    // 自定义右键菜单：滚轮切集开关、静音启动开关
     contextmenu: [
       {
         name: "wheel-switch",
@@ -479,6 +499,13 @@ const Preview = () => {
         html: wheelSwitchLabelEl,
         click: () => {
           setWheelSwitch(!wheelSwitchEnabled)
+        },
+      },
+      {
+        name: "mute-switch",
+        html: muteSwitchLabelEl,
+        click: () => {
+          setMuteOnStart(!muteOnStartEnabled)
         },
       },
     ],
@@ -688,6 +715,15 @@ const Preview = () => {
           }),
         )
       })
+    }
+    // 静音启动：恢复持久化状态并应用到播放器
+    muteOnStartEnabled = localStorage.getItem(MUTE_ON_START_KEY) === "true"
+    renderMuteSwitchLabel()
+    if (muteOnStartEnabled) {
+      player.once("ready", () => {
+        if (player?.video) player.muted = true
+      })
+      player.muted = true
     }
     // 滚轮切集：恢复持久化状态并绑定监听（监听在播放器根元素上，浮窗的 wheel 会转发到这里）
     wheelSwitchEnabled = localStorage.getItem(WHEEL_SWITCH_KEY) === "true"
