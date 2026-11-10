@@ -163,20 +163,36 @@ const Preview = () => {
       btn.style.opacity = on ? "1" : "0.6"
     }
   }
-  // 是否循环播放。使用原生 video.loop：由媒体内部完成回绕，
-  // 不会触发 ended 后的重新初始化/重新 seek，循环衔接最平滑。
+  // 是否循环播放。
+  // 抖音式无缝：在距离结尾还有一小段（数据已缓冲）时就提前 seek 回 0，
+  // 避免走到 ended 后再重新初始化/重新取首帧造成的停顿。
+  // 不使用原生 video.loop，避免与提前回绕双重触发。
+  const LOOP_REWIND_AHEAD = 0.3 // 秒
   let loopEnabled = false
-  const syncLoop = () => {
-    if (player?.video) player.video.loop = loopEnabled
+  let loopRewinding = false
+  const applyLoopState = () => {
+    if (player?.video) player.video.loop = false
+    loopRewinding = false
     applyLoopUI(loopEnabled)
   }
+  const syncLoop = () => applyLoopState()
   const toggleLoop = () => {
     if (!player?.video) return
     loopEnabled = !loopEnabled
-    player.video.loop = loopEnabled
+    applyLoopState()
     localStorage.setItem(LOOP_KEY, String(loopEnabled))
-    applyLoopUI(loopEnabled)
     notify.info(loopEnabled ? "循环播放已开启" : "循环播放已关闭")
+  }
+  // 提前回绕：仅在播放中、未 seek、且接近结尾时触发一次
+  const tryRewindForLoop = () => {
+    if (!loopEnabled || loopRewinding || !player?.video) return
+    const v = player.video
+    const d = v.duration
+    if (!d || d === Infinity || v.seeking || v.paused) return
+    if (d - v.currentTime <= LOOP_REWIND_AHEAD) {
+      loopRewinding = true
+      v.currentTime = 0
+    }
   }
 
   // ── 全屏选集面板 ──
@@ -617,9 +633,20 @@ const Preview = () => {
         )
       })
     }
+    // 提前回绕：每次时间推进时检查是否接近结尾
+    player.video.addEventListener("timeupdate", tryRewindForLoop)
+    // seek 完成后复位标记，允许下一轮再次触发
+    player.video.addEventListener("seeked", () => {
+      loopRewinding = false
+    })
+    // 兜底：若因极短音频/浏览器行为错过了提前回绕，ended 时再回绕一次
     player.on("video:ended", () => {
-      // 开启原生循环时由 video.loop 自动回绕，这里无需处理
-      if (loopEnabled) return
+      if (loopEnabled) {
+        loopRewinding = false
+        player.video.currentTime = 0
+        player.video.play().catch(() => {})
+        return
+      }
       if (!autoNext()) return
       next_video()
     })
@@ -634,6 +661,9 @@ const Preview = () => {
   })
   onCleanup(() => {
     disposed = true
+    if (player?.video) {
+      player.video.removeEventListener("timeupdate", tryRewindForLoop)
+    }
     closeEpisodePanel()
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {})
