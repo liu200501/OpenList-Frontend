@@ -1,4 +1,4 @@
-name: Build and Release
+name: 构建与发布
 
 on:
   push:
@@ -7,42 +7,68 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Target version (e.g. 1.0.0), tag will be v<version>"
+        description: "目标版本号（例如 1.0.0），默认标签为 v<version>"
         required: true
         type: string
+      tag:
+        description: "发布标签名（留空则使用 v<version>）"
+        required: false
+        type: string
+      title:
+        description: "发布标题（留空则使用“发布 <tag>”）"
+        required: false
+        type: string
+      description:
+        description: "发布说明（留空则自动生成）"
+        required: false
+        type: string
+      draft:
+        description: "创建为草稿发布"
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: "标记为预发布"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 jobs:
   build-and-release:
-    name: Build and Release
+    name: 构建与发布
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node
+      - name: 安装 Node
         uses: actions/setup-node@v7
         with:
           node-version: "24.20.0"
 
-      - name: Install pnpm
+      - name: 安装 pnpm
         uses: pnpm/action-setup@v6
         with:
           run_install: false
 
       # ============ workflow_dispatch 时：同步版本、提交、打标签 ============
-      - name: Prepare version and tag
+      - name: 准备版本与标签
         if: github.event_name == 'workflow_dispatch'
         run: |
           set -e
           VERSION="${{ github.event.inputs.version }}"
-          echo "Preparing release v$VERSION"
+          RELEASE_TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$RELEASE_TAG" ]; then
+            RELEASE_TAG="v$VERSION"
+          fi
+          echo "正在准备发布 $RELEASE_TAG"
 
           # 配置 git 身份（不依赖任何 Secret）
           git config user.name "github-actions[bot]"
@@ -52,30 +78,34 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp
           mv package.json.tmp package.json
           git add package.json
-          git commit -m "chore: release v$VERSION" --no-verify || echo "No changes to commit"
+          git commit -m "chore: 发布 $RELEASE_TAG" --no-verify || echo "没有需要提交的更改"
 
           # 删除旧的 edge 标签，避免干扰 git describe
           git tag -d edge 2>/dev/null || true
 
           # 打上正式版本标签
-          git tag -a "v$VERSION" -m "Release v$VERSION" -f
+          git tag -a "$RELEASE_TAG" -m "发布 $RELEASE_TAG" -f
 
-          # 推送提交和标签回仓库（Release 创建时需要用到标签）
+          # 推送提交和标签回仓库（创建 Release 时需要用到标签）
           git push origin HEAD:${{ github.ref_name }} || git push origin HEAD
-          git push origin "v$VERSION" -f
+          git push origin "$RELEASE_TAG" -f
 
       # ============ 统一拿到本次构建用的标签 ============
-      - name: Determine tag
-        id: tag
+      - name: 确定标签
+        id: release_tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            RELEASE_TAG="${{ github.event.inputs.tag }}"
+            if [ -z "$RELEASE_TAG" ]; then
+              RELEASE_TAG="v${{ github.event.inputs.version }}"
+            fi
+            echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
           else
             echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           fi
 
       # ============ 构建 regular 版本 ============
-      - name: Build Release
+      - name: 构建常规版本
         run: |
           chmod +x build.sh
           ./build.sh --release --compress
@@ -83,13 +113,13 @@ jobs:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
 
-      - name: Move regular build
+      - name: 移动常规版本产物
         run: |
           mkdir -p regular-dist
           mv dist/* regular-dist/
 
       # ============ 构建 lite 版本 ============
-      - name: Build Lite Release
+      - name: 构建精简版本
         run: |
           chmod +x build.sh
           ./build.sh --release --compress --lite
@@ -97,19 +127,43 @@ jobs:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
 
-      - name: Move lite build and restore regular build
+      - name: 移动精简版本产物并恢复常规版本
         run: |
           mkdir -p lite-dist
           mv dist/* lite-dist/
           mv regular-dist/* dist/
 
       # ============ 创建 Release 并上传产物 ============
-      - name: Create Release
+      - name: 创建发布
         run: |
-          gh release create \
-            "${{ steps.tag.outputs.tag }}" \
-            --title "Release ${{ steps.tag.outputs.tag }}" \
-            --generate-notes \
+          TAG="${{ steps.release_tag.outputs.tag }}"
+          TITLE="${{ github.event.inputs.title }}"
+          DESCRIPTION="${{ github.event.inputs.description }}"
+          DRAFT="${{ github.event.inputs.draft }}"
+          PRERELEASE="${{ github.event.inputs.prerelease }}"
+
+          if [ -z "$TITLE" ]; then
+            TITLE="发布 $TAG"
+          fi
+
+          ARGS=(--title "$TITLE")
+
+          if [ -n "$DESCRIPTION" ]; then
+            ARGS+=(--notes "$DESCRIPTION")
+          else
+            ARGS+=(--generate-notes)
+          fi
+
+          if [ "$DRAFT" = "true" ]; then
+            ARGS+=(--draft)
+          fi
+
+          if [ "$PRERELEASE" = "true" ]; then
+            ARGS+=(--prerelease)
+          fi
+
+          gh release create "$TAG" \
+            "${ARGS[@]}" \
             dist/openlist-frontend-dist-v*.tar.gz \
             lite-dist/openlist-frontend-dist-lite-v*.tar.gz \
             dist/i18n.tar.gz
