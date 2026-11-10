@@ -19,6 +19,8 @@ import {
   OrderBy,
   selectIndex,
 } from "~/store"
+import { FaSolidStar } from "solid-icons/fa"
+import { isObjFavorite, toggleObjFavorite } from "./collect"
 import { MountDetails, ObjType, StoreObj } from "~/types"
 import {
   bus,
@@ -52,10 +54,11 @@ export const ListItem = (props: { obj: StoreObj; index: number }) => {
   }
   const { setPathAs } = usePath()
   const { show } = useContextMenu({ id: 1 })
-  const { pushHref, to } = useRouter()
+  const { pushHref, to, pathname } = useRouter()
   const { openWithDoubleClick, toggleWithClick, restoreSelectionCache } =
     useSelectWithMouse()
   const filenameStyle = () => local["list_item_filename_overflow"]
+  const favorited = () => isObjFavorite(pathname(), props.obj)
   return (
     <Motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -126,22 +129,45 @@ export const ListItem = (props: { obj: StoreObj; index: number }) => {
               }}
             />
           </Show>
-          <Icon
-            class="icon"
-            boxSize="$6"
-            color={getMainColor()}
-            as={getIconByObj(props.obj)}
-            mr="$1"
-            cursor={props.obj.type !== ObjType.IMAGE ? "inherit" : "pointer"}
-            on:click={(e: MouseEvent) => {
-              if (props.obj.type !== ObjType.IMAGE) return
-              if (e.ctrlKey || e.metaKey || e.shiftKey) return
-              if (!restoreSelectionCache()) return
-              bus.emit("gallery", props.obj.name)
-              e.preventDefault()
-              e.stopPropagation()
-            }}
-          />
+          <Show
+            when={!favorited()}
+            fallback={
+              <Icon
+                class="icon"
+                boxSize="$6"
+                color="$warning9"
+                as={FaSolidStar}
+                mr="$1"
+                cursor="pointer"
+                title="取消收藏"
+                on:mousedown={(e: MouseEvent) => {
+                  e.stopPropagation()
+                }}
+                on:click={(e: MouseEvent) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  void toggleObjFavorite(pathname(), props.obj)
+                }}
+              />
+            }
+          >
+            <Icon
+              class="icon"
+              boxSize="$6"
+              color={getMainColor()}
+              as={getIconByObj(props.obj)}
+              mr="$1"
+              cursor={props.obj.type !== ObjType.IMAGE ? "inherit" : "pointer"}
+              on:click={(e: MouseEvent) => {
+                if (props.obj.type !== ObjType.IMAGE) return
+                if (e.ctrlKey || e.metaKey || e.shiftKey) return
+                if (!restoreSelectionCache()) return
+                bus.emit("gallery", props.obj.name)
+                e.preventDefault()
+                e.stopPropagation()
+              }}
+            />
+          </Show>
           <Text
             class="name"
             css={{

@@ -12,6 +12,7 @@ import {
   clearHistory,
   me,
   shouldKeepState,
+  refreshFavorites,
 } from "~/store"
 import {
   fsGet,
@@ -174,6 +175,8 @@ export const usePath = () => {
         if (onlyList) {
           return
         }
+        // 刷新收藏状态，供网格/列表/右键菜单显示星标。
+        void refreshFavorites()
         ObjStore.setReadme(data.readme)
         ObjStore.setHeader(data.header)
         ObjStore.setWrite(data.write)

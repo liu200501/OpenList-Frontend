@@ -5,6 +5,8 @@ import { batch, Show } from "solid-js"
 import { CenterLoading, LinkWithPush, ImageWithError } from "~/components"
 import { usePath, useRouter, useUtil } from "~/hooks"
 import { checkboxOpen, getMainColor, local, selectIndex } from "~/store"
+import { FaRegularStar, FaSolidStar } from "solid-icons/fa"
+import { isObjFavorite, toggleObjFavorite } from "./collect"
 import { ObjType, StoreObj } from "~/types"
 import { bus, hoverColor } from "~/utils"
 import { getIconByObj } from "~/utils/icon"
@@ -24,9 +26,10 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
     />
   )
   const { show } = useContextMenu({ id: 1 })
-  const { pushHref, to } = useRouter()
+  const { pushHref, to, pathname } = useRouter()
   const { openWithDoubleClick, toggleWithClick, restoreSelectionCache } =
     useSelectWithMouse()
+  const favorited = () => isObjFavorite(pathname(), props.obj)
   return (
     <Motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -115,6 +118,27 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
               }}
             />
           </Show>
+          <Icon
+            as={favorited() ? FaSolidStar : FaRegularStar}
+            pos="absolute"
+            right="$2"
+            top="$2"
+            boxSize="$5"
+            color={favorited() ? "$warning9" : "$neutral8"}
+            zIndex="$10"
+            cursor="pointer"
+            opacity={favorited() ? 1 : 0.75}
+            style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.6))" }}
+            title={favorited() ? "取消收藏" : "收藏"}
+            on:mousedown={(e: MouseEvent) => {
+              e.stopPropagation()
+            }}
+            on:click={(e: MouseEvent) => {
+              e.preventDefault()
+              e.stopPropagation()
+              void toggleObjFavorite(pathname(), props.obj)
+            }}
+          />
           <Show when={props.obj.thumb} fallback={objIcon}>
             <ImageWithError
               maxH="$full"

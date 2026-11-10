@@ -10,6 +10,7 @@ import { ImMoveUp } from "solid-icons/im"
 import { BiRegularRename } from "solid-icons/bi"
 import { FaSolidMagnet } from "solid-icons/fa"
 import { FiExternalLink } from "solid-icons/fi"
+import { FaSolidStar } from "solid-icons/fa"
 
 export interface Operations {
   [key: string]: {
@@ -35,6 +36,7 @@ export const operations: Operations = {
   download: { icon: AiOutlineCloudDownload, color: "$primary9" },
   share: { icon: CgShare, color: "$primary9" },
   offline_download_torrent: { icon: FaSolidMagnet, color: "$accent9" },
+  collect: { icon: FaSolidStar, color: "$warning9" },
 }
 // interface Operation {
 //   label: string;

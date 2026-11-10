@@ -131,6 +131,43 @@ export const fsRemoveEmptyDirectory = (src_dir: string): PEmptyResp => {
   return r.post("/fs/remove_empty_directory", { src_dir })
 }
 
+/**
+ * 将某个源路径加入 /收藏 别名存储的 paths 中。
+ * name 用于在 /收藏 目录下显示，默认取路径最后一段。
+ */
+export const collectToFavorite = (
+  path: string,
+  name?: string,
+  mount_path = "/收藏",
+): PEmptyResp => {
+  return r.post("/admin/storage/collect", { path, name, mount_path })
+}
+
+export interface FavoriteEntry {
+  name: string
+  path: string
+  line: string
+}
+
+/**
+ * 获取已收藏条目列表。
+ */
+export const listCollects = (mount_path?: string): PResp<FavoriteEntry[]> => {
+  return r.get("/admin/storage/collect/list", {
+    params: mount_path ? { mount_path } : undefined,
+  })
+}
+
+/**
+ * 取消收藏某个源路径。
+ */
+export const removeFavorite = (
+  path: string,
+  mount_path?: string,
+): PEmptyResp => {
+  return r.post("/admin/storage/collect/remove", { path, mount_path })
+}
+
 export const fsNewFile = (
   path: string,
   password: string,

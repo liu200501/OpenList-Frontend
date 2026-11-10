@@ -4,7 +4,7 @@ import "solid-contextmenu/dist/style.css"
 import { HStack, Icon, Text, useColorMode, Image } from "@hope-ui/solid"
 import { operations } from "../toolbar/operations"
 import { createMemo, For, Show } from "solid-js"
-import { bus, convertURL, notify, torrentParse } from "~/utils"
+import { bus, convertURL, notify, pathJoin, torrentParse } from "~/utils"
 import { ObjType, UserMethods } from "~/types"
 import {
   getSettingBool,
@@ -18,7 +18,9 @@ import {
 import { players } from "../previews/video_box"
 import { getPreviews } from "../previews"
 import { BsPlayCircleFill } from "solid-icons/bs"
+import { FaRegularStar, FaSolidStar } from "solid-icons/fa"
 import { isArchive } from "~/store/archive"
+import { isObjFavorite, toggleObjFavorite } from "./collect"
 import axios from "axios"
 
 const ItemContent = (props: { name: string }) => {
@@ -36,6 +38,25 @@ const ItemContent = (props: { name: string }) => {
   )
 }
 
+// 收藏菜单项：未收藏显示灰色空心星，已收藏显示亮色实心星，文案随状态切换。
+const CollectItemContent = (props: { favorited: boolean }) => {
+  const t = useT()
+  return (
+    <HStack spacing="$2">
+      <Icon
+        as={props.favorited ? FaSolidStar : FaRegularStar}
+        boxSize="$7"
+        color={props.favorited ? operations.collect.color : "$neutral8"}
+      />
+      <Text>
+        {props.favorited
+          ? t("home.toolbar.collect") + " (✓)"
+          : t("home.toolbar.collect")}
+      </Text>
+    </HStack>
+  )
+}
+
 export const ContextMenu = () => {
   const t = useT()
   const { colorMode } = useColorMode()
@@ -46,7 +67,37 @@ export const ContextMenu = () => {
     return UserMethods.is_admin(me()) || getSettingBool("package_download")
   }
   const { rawLink } = useLink()
-  const { isShare, pushHref, to } = useRouter()
+  const { isShare, pushHref, to, pathname } = useRouter()
+  // 当前选中项是否都已收藏（用于决定切换方向）。
+  const selectedAllFavorited = () => {
+    const objs = selectedObjs()
+    if (objs.length === 0) return false
+    const dir = pathname()
+    return objs.every((obj) => isObjFavorite(dir, obj))
+  }
+  // 切换收藏状态：全部已收藏则取消全部，否则把未收藏的加入收藏。
+  const toggleCollect = async () => {
+    const objs = selectedObjs()
+    if (objs.length === 0) return
+    const dir = pathname()
+    const unfavorite = selectedAllFavorited()
+    let okCount = 0
+    for (const obj of objs) {
+      const favorited = isObjFavorite(dir, obj)
+      // 取消收藏时只处理已收藏的；加入收藏时只处理未收藏的。
+      // favorited 与目标方向不一致的项才需要处理。
+      if (unfavorite !== favorited) continue
+      const now = await toggleObjFavorite(dir, obj)
+      if (now !== favorited) {
+        okCount++
+      } else {
+        notify.error(t("home.toolbar.collect") + " failed")
+      }
+    }
+    if (okCount > 0) {
+      notify.success(`${t("home.toolbar.collect")} (${okCount})`)
+    }
+  }
   const openWithPreviews = createMemo(() => {
     const objs = selectedObjs()
     if (objs.length !== 1) return []
@@ -96,6 +147,9 @@ export const ContextMenu = () => {
         }}
       >
         <ItemContent name="share" />
+      </Item>
+      <Item hidden={isShare() || !objStore.write} onClick={toggleCollect}>
+        <CollectItemContent favorited={selectedAllFavorited()} />
       </Item>
       <Item
         hidden={() => {
