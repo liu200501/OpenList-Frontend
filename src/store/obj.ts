@@ -6,6 +6,7 @@ import { Obj, ObjType, StoreObj } from "~/types"
 import { bus, log } from "~/utils"
 import { keyPressed } from "./key-event"
 import { local } from "./local_settings"
+import { isFavoritePlaceholder } from "./favorite"
 import { useT } from "~/hooks"
 
 export enum State {
@@ -39,10 +40,14 @@ const [objStore, setObjStore] = createStore<
   }
 >(initialObjStore)
 
+// 过滤掉收藏别名存储的占位根条目，避免它出现在列表/网格等视图中。
+const filterObjs = (objs: Obj[]): Obj[] =>
+  objs.filter((obj) => !isFavoritePlaceholder(obj.name))
+
 const setObjs = (objs: Obj[]) => {
   lastChecked.start = -1
   lastChecked.end = -1
-  setObjStore("objs", objs)
+  setObjStore("objs", filterObjs(objs))
   setObjStore("obj", "is_dir", true)
 }
 
@@ -102,7 +107,7 @@ export const sortObjs = (orderBy: OrderBy, reverse?: boolean) => {
 export const appendObjs = (objs: Obj[]) => {
   setObjStore(
     "objs",
-    produce((prev) => prev.push(...objs)),
+    produce((prev) => prev.push(...filterObjs(objs))),
   )
 }
 

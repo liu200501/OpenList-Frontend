@@ -4,6 +4,16 @@ import { listCollects, FavoriteEntry } from "~/utils/api"
 // 收藏挂载目录的默认路径。后端默认把收藏聚合到 "/收藏"。
 export const FAVORITE_MOUNT = "/收藏"
 
+// 收藏别名存储的占位根条目名。
+// 后端为了解决「只收藏一条时 Alias 把唯一项当成根目录」的问题，
+// 会在收藏存储的 paths 中固定写入一行 `__favorite_root__:/`。
+// 该条目不是真实收藏，前端不应展示给用户。
+export const FAVORITE_ROOT_PLACEHOLDER = "__favorite_root__"
+
+/** 判断某个目录项是否为收藏占位根条目（需要在前端隐藏）。 */
+export const isFavoritePlaceholder = (name: string): boolean =>
+  name === FAVORITE_ROOT_PLACEHOLDER
+
 // 收藏项集合：源路径 -> 显示名。
 // 注意：在收藏目录下，后端返回的 obj.name 是“显示名”，而收藏记录的键是源路径，
 // 两者并不相同，因此需要同时保留 name 才能正确判断收藏状态。
