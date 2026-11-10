@@ -635,6 +635,8 @@ const Preview = () => {
     if (disposed) return
 
     player = new Artplayer(option)
+    // 暴露给自定义内容脚本（Ctrl + 滚轮调节音量等）使用
+    ;(window as any).art = player
     floatingPlayer = new FloatingPlayer(player, (enabled) => {
       applyFloatUI(enabled)
     })
@@ -719,6 +721,10 @@ const Preview = () => {
   })
   onCleanup(() => {
     disposed = true
+    // 清理全局实例引用，避免自定义脚本持有已销毁的播放器
+    if ((window as any).art === player) {
+      ;(window as any).art = undefined
+    }
     if (wheelLockTimer !== undefined) {
       window.clearTimeout(wheelLockTimer)
       wheelLockTimer = undefined

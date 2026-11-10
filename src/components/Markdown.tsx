@@ -15,6 +15,7 @@ import { useScrollListener } from "~/pages/home/toolbar/BackTop.jsx"
 import { getMainColor, getSettingBool, me } from "~/store"
 import {
   api,
+  encodePath,
   loadCSS,
   loadScriptIIFE,
   notify,
@@ -31,6 +32,26 @@ type TocItem = { indent: number; text: string; tagName: string; key: string }
 
 const MERMAID_PATTERN = /```mermaid[\s\S]*?```/i
 const MATH_PATTERN = /\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/
+
+// Matches http(s) URLs, protocol-relative URLs and relative/absolute paths
+const LINK_PATTERN =
+  /(?:https?:\/\/|\/\/)[^\s<>"'`()\[\]{}]+|(?:\.{1,2}\/|\/)[^\s<>"'`()\[\]{}]+/g
+
+function resolveMarkdownLink(raw: string, currentPath: string) {
+  if (/^(?:https?:)?\/\//i.test(raw)) {
+    return { url: raw, external: true }
+  }
+  const [pathPart, ...hashAndQuery] = raw.split(/(?=[?#])/)
+  const suffix = hashAndQuery.join("")
+  const resolved = pathResolve(
+    pathPart.startsWith("/") ? pathPart : pathJoin(currentPath, pathPart),
+  )
+  return { url: `${encodePath(resolved)}${suffix}`, external: false }
+}
+
+function escapeHtml(text: string) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}
 
 const [isTocVisible, setVisible] = createSignal(false)
 const [isTocDisabled, setTocDisabled] = createStorageSignal(
@@ -218,7 +239,56 @@ export function Markdown(props: {
   const [markdownHTML, setMarkdownHTML] = createSignal<string>("")
   const mermaidTheme = useColorModeValue("default", "dark")
   const { isString, text } = useParseText(props.children)
-  const { pathname } = useRouter()
+  const { pathname, to } = useRouter()
+
+  // Follow links in markdown: external URLs open in a new tab, in-site paths
+  // are resolved relative to the current directory and routed in-app.
+  function handleLinkClick(e: MouseEvent, anchor: HTMLAnchorElement) {
+    const href = anchor.getAttribute("href") || ""
+    if (!href || href.startsWith("#")) return
+    if (/^[a-z][\w+.-]*:/i.test(href) && !/^https?:/i.test(href)) return
+    e.preventDefault()
+    e.stopPropagation()
+    const { url, external } = resolveMarkdownLink(href, pathname())
+    if (external) {
+      window.open(url, "_blank", "noopener,noreferrer")
+    } else {
+      to(url)
+    }
+  }
+
+  // Turn bare URLs inside code blocks into clickable links, since markdown
+  // leaves code block content as plain text.
+  function linkifyCodeBlocks(container: HTMLElement) {
+    container.querySelectorAll("pre > code").forEach((code) => {
+      const el = code as HTMLElement
+      if (el.dataset.linkified === "true" || el.querySelector("span")) return
+      // Leave diagram blocks untouched
+      if (el.classList.contains("language-mermaid")) return
+      const source = el.textContent || ""
+      if (!source) return
+      LINK_PATTERN.lastIndex = 0
+      let result = ""
+      let lastIndex = 0
+      let changed = false
+      let match: RegExpExecArray | null
+      while ((match = LINK_PATTERN.exec(source)) !== null) {
+        const raw = match[0].replace(/[.,;:!?]+$/, "")
+        if (!raw) continue
+        result += escapeHtml(source.slice(lastIndex, match.index))
+        const href = /^(?:https?:)?\/\//i.test(raw)
+          ? raw
+          : resolveMarkdownLink(raw, pathname()).url
+        result += `<a href="${escapeHtml(href)}" class="md-auto-link">${escapeHtml(raw)}</a>`
+        lastIndex = match.index + raw.length
+        changed = true
+      }
+      if (!changed) return
+      result += escapeHtml(source.slice(lastIndex))
+      el.innerHTML = result
+      el.dataset.linkified = "true"
+    })
+  }
 
   const md = createMemo(() => {
     const raw = text(encoding())
@@ -263,6 +333,10 @@ export function Markdown(props: {
 
       setTimeout(() => {
         setShow(true)
+        // Auto-link bare URLs before highlighting, since highlighting wraps
+        // content in <span> elements that would hide the raw text.
+        const container = markdownRef()
+        if (container) linkifyCodeBlocks(container)
         // Only highlight code blocks with an explicit, supported language
         const noHighlight = new Set([
           "language-plain",
@@ -292,6 +366,12 @@ export function Markdown(props: {
           window.mermaid.run({ querySelector: ".language-mermaid" })
         }
 
+        markdownRef()
+          ?.querySelectorAll("a")
+          .forEach((a) => {
+            a.setAttribute("rel", "noopener noreferrer")
+          })
+
         window.onMDRender?.()
       })
     }),
@@ -305,6 +385,10 @@ export function Markdown(props: {
       class="markdown"
       pos="relative"
       w="$full"
+      onClick={(e: MouseEvent) => {
+        const anchor = (e.target as HTMLElement)?.closest?.("a")
+        if (anchor) handleLinkClick(e, anchor as HTMLAnchorElement)
+      }}
     >
       <Show when={show()}>
         <Box

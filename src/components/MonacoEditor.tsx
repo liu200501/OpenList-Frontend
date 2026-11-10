@@ -41,6 +41,7 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
   let model: monacoType.editor.ITextModel
 
   onMount(() => {
+    if (!monaco) return
     const constructionOptions = {
       ...props.options,
       value: props.value,
@@ -70,6 +71,7 @@ export const MonacoEditor = (props: MonacoEditorProps) => {
   )
 
   createEffect(() => {
+    if (!monaco) return
     monaco.editor.setTheme(props.options?.theme ?? "vs")
   })
 

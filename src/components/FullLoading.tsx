@@ -19,7 +19,9 @@ export const MaybeLoading = (props: {
   children?: JSXElement
   loading?: boolean
 }) => {
-  return <>{props.children}</>
+  // loading 为 true 时不渲染 children，等资源就绪后再挂载，
+  // 避免子组件在依赖（如 monaco）未初始化时提前执行。
+  return <Show when={!props.loading}>{props.children}</Show>
 }
 
 export const CenterLoading = <C extends ElementType = "div">(
