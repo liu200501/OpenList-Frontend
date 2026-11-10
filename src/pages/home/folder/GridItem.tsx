@@ -121,14 +121,16 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
           <Icon
             as={favorited() ? FaSolidStar : FaRegularStar}
             pos="absolute"
-            right="$2"
-            top="$2"
+            left="$2"
+            style={{
+              top: "24px",
+              filter: "drop-shadow(0 0 2px rgba(0,0,0,0.6))",
+            }}
             boxSize="$5"
             color={favorited() ? "$warning9" : "$neutral8"}
             zIndex="$10"
             cursor="pointer"
             opacity={favorited() ? 1 : 0.75}
-            style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.6))" }}
             title={favorited() ? "取消收藏" : "收藏"}
             on:mousedown={(e: MouseEvent) => {
               e.stopPropagation()
