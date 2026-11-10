@@ -14,8 +14,8 @@ import type Artplayer from "artplayer"
 
 const STORAGE_KEY = "video_float_window"
 // 最小宽高：允许缩到很小的竖屏窗口（如 200x255 这类），具体比例由视频决定
-const MIN_WIDTH = 120
-const MIN_HEIGHT = 120
+const MIN_WIDTH = 80
+const MIN_HEIGHT = 80
 const EDGE = 6 // 可拖拽边框的像素宽度
 // 视频宽高比未知时的兜底比例（16:9）
 const DEFAULT_RATIO = 16 / 9
