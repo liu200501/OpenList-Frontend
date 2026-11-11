@@ -4,6 +4,7 @@ import { r } from "~/utils"
 import { SetUpload, Upload } from "./types"
 import { calculateHash } from "./util"
 import { StreamUpload } from "./stream"
+import { createSpeedTracker } from "./speed"
 
 type MultipartState =
   | "receiving"
@@ -153,19 +154,13 @@ export const MultipartUpload: Upload = async (
   // from the sum until it is resent; report the high-water mark so progress
   // plateaus instead of jumping backwards and speed can never go negative
   let peakDone = ackedBytes
-  let lastTime = Date.now()
-  let lastBytes = ackedBytes
+  const trackSpeed = createSpeedTracker(setUpload, file.size)
   const report = () => {
     let inflight = 0
     for (const v of Object.values(inflightLoaded)) inflight += v
     peakDone = Math.max(peakDone, Math.min(ackedBytes + inflight, file.size))
     setUpload("progress", ((peakDone / file.size) * 100) | 0)
-    const now = Date.now()
-    if (now - lastTime >= 1000) {
-      setUpload("speed", ((peakDone - lastBytes) / (now - lastTime)) * 1000)
-      lastTime = now
-      lastBytes = peakDone
-    }
+    trackSpeed(peakDone)
   }
 
   let completedEarly = false // rapid upload finished the session server-side

@@ -1,23 +1,6 @@
 import { Upload, SetUpload } from "./types"
+import { createSpeedTracker } from "./speed"
 import { r, pathDir } from "~/utils"
-
-// Create a speed calculator using closure
-function createSpeedCalculator(throttleMs = 500) {
-  let lastLoaded = 0
-  let lastTime = Date.now()
-
-  return (loaded: number, setUpload?: SetUpload) => {
-    const now = Date.now()
-    const timeDiff = (now - lastTime) / 1000
-
-    if (timeDiff >= throttleMs / 1000) {
-      const speed = (loaded - lastLoaded) / timeDiff
-      setUpload?.("speed", speed)
-      lastLoaded = loaded
-      lastTime = now
-    }
-  }
-}
 
 export const HttpDirectUpload: Upload = async (
   uploadPath: string,
@@ -88,14 +71,16 @@ async function uploadSingle(
   setUpload?: SetUpload,
 ): Promise<undefined> {
   const xhr = new XMLHttpRequest()
-  const calcSpeed = createSpeedCalculator()
+  const trackSpeed = setUpload
+    ? createSpeedTracker(setUpload, file.size)
+    : () => {}
 
   return new Promise((resolve, reject) => {
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable && setUpload) {
         const progress = (e.loaded / e.total) * 100
         setUpload("progress", progress)
-        calcSpeed(e.loaded, setUpload)
+        trackSpeed(e.loaded)
       }
     })
 
@@ -133,7 +118,9 @@ async function uploadChunked(
   setUpload?: SetUpload,
 ): Promise<undefined> {
   const totalChunks = Math.ceil(file.size / chunkSize)
-  const calcSpeed = createSpeedCalculator()
+  const trackSpeed = setUpload
+    ? createSpeedTracker(setUpload, file.size)
+    : () => {}
   let uploadedBytes = 0
 
   for (let i = 0; i < totalChunks; i++) {
@@ -149,7 +136,7 @@ async function uploadChunked(
           const totalLoaded = uploadedBytes + e.loaded
           const progress = (totalLoaded / file.size) * 100
           setUpload("progress", progress)
-          calcSpeed(totalLoaded, setUpload)
+          trackSpeed(totalLoaded)
         }
       })
 

@@ -3,6 +3,7 @@ import { EmptyResp } from "~/types"
 import { r } from "~/utils"
 import { SetUpload, Upload } from "./types"
 import { calculateHash } from "./util"
+import { createSpeedTracker } from "./speed"
 export const StreamUpload: Upload = async (
   uploadPath: string,
   file: File,
@@ -11,8 +12,7 @@ export const StreamUpload: Upload = async (
   overwrite = false,
   rapid = false,
 ): Promise<undefined> => {
-  let oldTimestamp = new Date().valueOf()
-  let oldLoaded = 0
+  const trackSpeed = createSpeedTracker(setUpload, file.size)
   let headers: { [k: string]: any } = {
     "File-Path": encodeURIComponent(uploadPath),
     "As-Task": asTask,
@@ -38,20 +38,7 @@ export const StreamUpload: Upload = async (
         const complete =
           ((progressEvent.loaded / progressEvent.total) * 100) | 0
         setUpload("progress", complete)
-
-        const timestamp = new Date().valueOf()
-        const duration = (timestamp - oldTimestamp) / 1000
-        if (duration > 1) {
-          const loaded = progressEvent.loaded - oldLoaded
-          const speed = loaded / duration
-          const remain = progressEvent.total - progressEvent.loaded
-          const remainTime = remain / speed
-          setUpload("speed", speed)
-          console.log(remainTime)
-
-          oldTimestamp = timestamp
-          oldLoaded = progressEvent.loaded
-        }
+        trackSpeed(progressEvent.loaded)
 
         if (complete === 100) {
           setUpload("status", "backending")
@@ -60,6 +47,7 @@ export const StreamUpload: Upload = async (
     },
   })
   if (resp.code === 200) {
+    setUpload("eta", undefined)
     return
   } else {
     throw new Error(resp.message)

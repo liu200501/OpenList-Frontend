@@ -6,6 +6,8 @@ export interface UploadFileProps {
   size: number
   progress: number
   speed: number
+  /** 预估剩余秒数，未知时为 undefined */
+  eta?: number
   status: Status
   msg?: string
 }

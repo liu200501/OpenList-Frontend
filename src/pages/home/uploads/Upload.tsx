@@ -27,9 +27,13 @@ import { UploadFileProps, StatusBadge } from "./types"
 import { File2Upload, traverseFileTree } from "./util"
 import { SelectWrapper } from "~/components"
 import { getUploads } from "./uploads"
+import { formatETA } from "./speed"
 
 const UploadFile = (props: UploadFileProps & { onRetry?: () => void }) => {
   const t = useT()
+  // 只有真正在传的时候才显示速度和剩余时间，传完了留个数字没意义
+  const active = () => ["uploading", "backending"].includes(props.status)
+  const etaText = () => (active() ? formatETA(props.eta) : "")
   return (
     <VStack
       w="$full"
@@ -54,7 +58,16 @@ const UploadFile = (props: UploadFileProps & { onRetry?: () => void }) => {
           <Badge colorScheme={StatusBadge[props.status]}>
             {t(`home.upload.${props.status}`)}
           </Badge>
-          <Text>{getFileSize(props.speed)}/s</Text>
+          <Show when={active() && props.speed > 0}>
+            <Text fontSize="$sm" color="$neutral11">
+              {getFileSize(props.speed)}/s
+            </Text>
+          </Show>
+          <Show when={etaText()}>
+            <Text fontSize="$sm" color="$neutral11">
+              {t("home.upload.remaining")} {etaText()}
+            </Text>
+          </Show>
         </HStack>
         <HStack spacing="$2">
           <Show when={props.status === "error" && props.onRetry}>
@@ -136,6 +149,7 @@ const Upload = () => {
     setUpload(path, "msg", "")
     setUpload(path, "progress", 0)
     setUpload(path, "speed", 0)
+    setUpload(path, "eta", undefined)
     handleFile(file)
   }
   const handleFile = async (file: File) => {

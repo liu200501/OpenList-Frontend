@@ -4,6 +4,7 @@ import { Resp } from "~/types"
 import { SetUpload, Upload } from "./types"
 import { calculateHash } from "./util"
 import { StreamUpload } from "./stream"
+import { createSpeedTracker } from "./speed"
 
 /**
  * Session-based chunked upload (large-file friendly):
@@ -29,6 +30,7 @@ export const ChunkedUpload: Upload = async (
   // Normalize root path: pathDir returns "" for root, so use "/" to avoid
   // "path and file_name are required" errors.
   const dirPath = pathDir(uploadPath) || "/"
+  const trackSpeed = createSpeedTracker(setUpload, file.size)
 
   let md5 = ""
   if (rapid) {
@@ -99,8 +101,6 @@ export const ChunkedUpload: Upload = async (
   const { session, partCount, chunkSize } = info
   const totalParts: number = partCount
 
-  let oldTimestamp = new Date().valueOf()
-  let oldLoaded = 0
   const partMd5s: string[] = []
 
   // Upload parts sequentially (preserves part order and session consistency)
@@ -120,14 +120,7 @@ export const ChunkedUpload: Upload = async (
           const loaded = start + progressEvent.loaded
           const complete = (loaded / file.size) * 100
           setUpload("progress", complete | 0)
-          const timestamp = new Date().valueOf()
-          const duration = (timestamp - oldTimestamp) / 1000
-          if (duration > 1) {
-            const speed = (loaded - oldLoaded) / duration
-            setUpload("speed", speed)
-            oldTimestamp = timestamp
-            oldLoaded = loaded
-          }
+          trackSpeed(loaded)
         }
       },
     })) as unknown as Resp<any>
