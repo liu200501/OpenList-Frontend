@@ -33,6 +33,7 @@ enum TaskStateEnum {
   Failed,
   WaitingRetry,
   BeforeRetry,
+  Paused,
 }
 
 const StateMap: Record<
@@ -49,6 +50,7 @@ const StateMap: Record<
   [TaskStateEnum.Failed]: "danger",
   [TaskStateEnum.Succeeded]: "success",
   [TaskStateEnum.Canceled]: "neutral",
+  [TaskStateEnum.Paused]: "warning",
 }
 
 const Creator = (props: { name: string; role: number }) => {
@@ -123,6 +125,22 @@ export const Task = (props: TaskAttribute & TasksProps & TaskLocalSetter) => {
       props.state === TaskStateEnum.Canceled)
   const [operateLoading, operate] = useFetch((): PEmptyResp =>
     r.post(`/task/${props.type}/${operateName}?tid=${props.id}`),
+  )
+  // 只有上传任务、且所在存储声明支持续传时才给暂停按钮
+  // （crypt 存储可以在「存储 → 编辑」里关掉续传开关，关了这里就不显示）
+  const canPauseTask =
+    props.type === "upload" &&
+    props.pausable === true &&
+    (props.state === TaskStateEnum.Running ||
+      props.state === TaskStateEnum.Pending ||
+      props.state === TaskStateEnum.WaitingRetry ||
+      props.state === TaskStateEnum.BeforeRetry)
+  const isPaused = props.state === TaskStateEnum.Paused
+  const [pauseLoading, pause] = useFetch((): PEmptyResp =>
+    r.post(`/task/${props.type}/pause?tid=${props.id}`),
+  )
+  const [resumeLoading, resume] = useFetch((): PEmptyResp =>
+    r.post(`/task/${props.type}/resume?tid=${props.id}`),
   )
   const [retryLoading, retry] = useFetch((): PEmptyResp =>
     r.post(`/task/${props.type}/retry?tid=${props.id}`),
@@ -231,6 +249,21 @@ export const Task = (props: TaskAttribute & TasksProps & TaskLocalSetter) => {
         </Center>
         <Flex w={cols[5].w} gap="$1">
           <Spacer />
+          <Show when={canPauseTask || isPaused}>
+            <Button
+              size="sm"
+              colorScheme={isPaused ? "success" : "warning"}
+              loading={isPaused ? resumeLoading() : pauseLoading()}
+              onClick={async () => {
+                const resp = isPaused ? await resume() : await pause()
+                handleResp(resp, () => {
+                  notify.info(t(isPaused ? "tasks.resume" : "tasks.pause"))
+                })
+              }}
+            >
+              {t(isPaused ? "tasks.resume" : "tasks.pause")}
+            </Button>
+          </Show>
           <Show when={props.canRetry}>
             <Button
               size="sm"

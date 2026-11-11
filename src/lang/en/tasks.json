@@ -21,8 +21,11 @@
     "6": "Failing",
     "7": "Failed",
     "8": "Waiting for Retry",
-    "9": "Preparing to Retry"
+    "9": "Preparing to Retry",
+    "10": "Paused"
   },
+  "pause": "Pause",
+  "resume": "Resume",
   "retry_selected": "Retry Selected",
   "cancel_selected": "Cancel Selected",
   "delete_selected": "Delete Selected",

@@ -10,4 +10,6 @@ export interface TaskInfo {
   end_time: string | null
   total_bytes: number
   error: string
+  // 所在存储是否支持暂停/继续（后端按驱动能力 + crypt 存储开关给出）
+  pausable?: boolean
 }
