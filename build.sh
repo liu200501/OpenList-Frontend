@@ -63,7 +63,7 @@ display_help() {
     echo "  --compress    Create compressed archive"
     echo "  --no-compress Skip compression"
     echo "  --enforce-tag Force git tag requirement for both dev and release builds"
-    echo "  --skip-i18n   Skip i18n build step"
+    echo "  --skip-i18n   Skip i18n generation step (uses existing src/lang as-is)"
     echo "  --lite        Build lite version"
     echo ""
     echo "Environment variables:"
@@ -147,16 +147,8 @@ build_project() {
     pnpm install
 
     log_step "==== Building i18n ===="
-    if [[ "$SKIP_I18N" == "false" ]]; then
-        if ! pnpm i18n:release; then
-            log_warning "Crowdin download failed, falling back to the edge beta release"
-            fetch_i18n_from_release "edge" || true
-        fi
-    else
-        fetch_i18n_from_release "edge" || true
-    fi
-
-    # Always generate entry.ts and fill missing translation files for all languages
+    # 使用本地 src/lang 下的 JSON 作为翻译源，直接生成 entry.ts 并补齐缺失语言文件。
+    # 不再调用 Crowdin，也不再从 GitHub Release 下载 i18n.tar.gz 覆盖源码。
     log_info "Running i18n build script to generate entry.ts..."
     node ./scripts/i18n.mjs
 
@@ -166,40 +158,6 @@ build_project() {
     else
         pnpm build
     fi
-}
-
-# Fetch i18n files from release if skip-i18n flag is set
-fetch_i18n_from_release() {
-    local release_tag=${1:-edge}
-
-    log_warning "Trying to fetch i18n files from GitHub release: $release_tag"
-    release_response=$(curl -fsSL "https://api.github.com/repos/OpenListTeam/OpenList-Frontend/releases/tags/$release_tag") || {
-        log_warning "Failed to fetch release info for $release_tag."
-        return 1
-    }
-    extract_i18n_tarball "$release_response"
-}
-
-# Extract i18n tarball
-extract_i18n_tarball() {
-    i18n_file_url=$(echo "$1" | grep -oP '"browser_download_url":\s*"\K[^"]*' | grep "i18n.tar.gz") || true
-    if [[ -z "$i18n_file_url" ]]; then
-        log_warning "i18n.tar.gz not found in release assets."
-        return 1
-    else
-        log_info "Downloading i18n.tar.gz from GitHub..."
-        if curl -fL -o "i18n.tar.gz" "$i18n_file_url"; then
-            if tar -xzf i18n.tar.gz -C src/lang; then
-                log_info "i18n files extracted to src/lang/"
-                return 0
-            else
-                log_warning "Failed to extract i18n.tar.gz."
-            fi
-        else
-            log_warning "Failed to download i18n.tar.gz."
-        fi
-    fi
-    return 1
 }
 
 # Create VERSION file in the dist directory

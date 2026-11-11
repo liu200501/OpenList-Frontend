@@ -33,11 +33,6 @@ jobs:
         run: |
           chmod +x build.sh
           ./build.sh --dev --no-compress --skip-i18n
-        env:
-          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
-          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
-          # OPENLIST_FRONTEND_BUILD_MODE: dev
-          # OPENLIST_FRONTEND_BUILD_COMPRESS: false
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v7
