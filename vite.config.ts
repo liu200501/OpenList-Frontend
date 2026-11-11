@@ -32,6 +32,24 @@ function fixLegacyPolyfillDataSrc(): Plugin {
   }
 }
 
+const DEV_BACKEND = process.env.DEV_PROXY_TARGET || "http://localhost:5248"
+
+// 除 /api 外，raw 文件相关路由也必须代理到后端。
+// 否则 vite 的 SPA fallback 会把这些请求当成前端路由，返回 200 + index.html，
+// 于是 Markdown / 文本 / 图片预览拿到的「文件内容」其实是首页 HTML。
+const RAW_FILE_ROUTES = [
+  "/d/", // 直接下载
+  "/p/", // 代理下载
+  "/ad/", // 压缩包内直接下载
+  "/ap/", // 压缩包内代理下载
+  "/ae/", // 压缩包内文件抽取
+  "/sd/", // 分享下载
+  "/sad/", // 分享压缩包内文件抽取
+  "/dav/", // WebDAV
+  "/i/", // plist
+  "/tc/", // 转码播放 m3u8 / 切片
+]
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -109,12 +127,20 @@ export default defineConfig({
     proxy: {
       "/api": {
         // DEV_PROXY_TARGET 允许 dev 时对接不同后端：
-        //   Go 版 OpenList 后端   -> 默认 http://localhost:5244
+        //   Go 版 OpenList 后端   -> 默认 http://localhost:5246
         //   OpenListNext(TS) 后端 -> DEV_PROXY_TARGET=http://localhost:8787
-        target: process.env.DEV_PROXY_TARGET || "http://localhost:5244",
+        target: DEV_BACKEND,
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, ""),
       },
+      ...Object.fromEntries(
+        RAW_FILE_ROUTES.map((route) => [
+          route,
+          { target: DEV_BACKEND, changeOrigin: true },
+        ]),
+      ),
+      // 后端 --debug 时的调试接口（pprof 等），方便在 5173 上直接访问 /debug/pprof/
+      "/debug/": { target: DEV_BACKEND, changeOrigin: true },
     },
   },
 })
