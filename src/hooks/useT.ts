@@ -1,7 +1,17 @@
-import { dict, i18n, languages } from "~/app/i18n"
+import { currentLang, dict, i18n, languages } from "~/app/i18n"
 import { firstUpperCase } from "~/utils"
 
 const translator = i18n.translator(dict)
+
+// DEV 下把漏翻从「静默显示 key」变成可见告警；同一个 key 只提示一次，避免刷屏
+const warnedKeys = new Set<string>()
+const warnMissingOnce = (key: string) => {
+  if (warnedKeys.has(key)) return
+  warnedKeys.add(key)
+  console.warn(
+    `[i18n] 缺少翻译 ${key}（当前语言 ${currentLang()}）→ 请补进 src/lang/en 与 src/lang/zh-CN`,
+  )
+}
 
 const resolveTranslation = (
   key: string,
@@ -28,7 +38,10 @@ export const useT = () => {
 
     if (translatedValue) return translatedValue
     if (defaultValue) return defaultValue
-    if (import.meta.env.DEV) return key
+    if (import.meta.env.DEV) {
+      warnMissingOnce(key)
+      return key
+    }
 
     return formatKeyAsDisplay(key)
   }

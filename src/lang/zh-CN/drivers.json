@@ -98,7 +98,7 @@
     "origin_urls": "原始链接",
     "origin_urls-tips": "结构：\nFolderName:\n  [FileSize:][Modified:]URL",
     "private_key": "私钥",
-    "uid": "UID",
+    "uid": "用户 ID",
     "valid_duration": "有效时长",
     "valid_duration-tips": "分钟数"
   },
@@ -111,7 +111,13 @@
   "139Yun": {
     "authorization": "授权",
     "authorization-tips": "授权可以单独使用。为空则仅凭邮箱 Cookie 快速登录，或凭邮箱 Cookie+用户名+密码作为完整登录回退。",
-    "cloud_id": "Cloud ID",
+    "client_type": "客户端类型",
+    "client_type-tips": "上报给个人云 API 的客户端类型。web (9) 支持最大 50 GB 的文件上传；pc (13) 可将单文件上传上限提升到 500 GB",
+    "client_types": {
+      "pc": "PC 客户端",
+      "web": "网页版"
+    },
+    "cloud_id": "云盘 ID",
     "custom_upload_part_size": "自定义上传分片大小",
     "custom_upload_part_size-tips": "0 为自动设置",
     "link_id": "分享链接ID",
@@ -125,6 +131,10 @@
     "root_folder_id": "根文件夹 ID",
     "sms_code": "短信验证码",
     "sms_code-tips": "待 OpenList 提示 139 邮箱验证码已发送后，再填写此项，并重新保存配置。",
+    "thumbnail_proxy_enabled": "启用缩略图代理",
+    "thumbnail_proxy_enabled-tips": "启用缩略图代理：开启后，缩略图 URL 会替换为下方代理地址，解决 *.cmecloud.cn 直连不可达的问题",
+    "thumbnail_proxy_url": "缩略图代理地址",
+    "thumbnail_proxy_url-tips": "缩略图代理地址前缀。代理服务需接收 ?url=原始缩略图URL 并转发，同时保持原始 Host 头以通过 AWS 签名校验。示例：https://your-proxy.com/proxy?url=",
     "type": "类型",
     "types": {
       "family": "家庭云",
@@ -151,16 +161,16 @@
   },
   "189CloudPC": {
     "access_token": "访问令牌",
-    "client_sn": "Client sn",
-    "client_sn-tips": "Device serial number captured from the official client, leave it empty if you do not have one",
-    "device_id": "Device id",
-    "device_id-tips": "DEVICEID cookie issued after the second device verification, keep it to avoid verifying again",
+    "client_sn": "客户端序列号",
+    "client_sn-tips": "从官方客户端抓取的设备序列号，没有可留空",
+    "device_id": "设备 ID",
+    "device_id-tips": "二次设备验证后下发的 DEVICEID Cookie，保留它可避免再次验证",
     "family_id": "家庭 ID",
     "family_transfer": "家庭传输",
     "generate_torrent": "生成种子",
     "generate_torrent-tips": "上传后生成带有 CAS 的 Torrent 文件",
-    "jg_open_id": "Jg open id",
-    "jg_open_id-tips": "Optional push id reported by the official client",
+    "jg_open_id": "推送 OpenID",
+    "jg_open_id-tips": "官方客户端上报的推送标识，可选",
     "login_type": "登录类型",
     "login_types": {
       "password": "密码",
@@ -179,13 +189,13 @@
       "desc": "降序"
     },
     "password": "密码",
-    "password-tips": "Not needed when an access token or refresh token is provided",
+    "password-tips": "已提供访问令牌或刷新令牌时无需填写",
     "rapid_upload": "秒传",
     "refresh_token": "刷新令牌",
     "refresh_token-tips": "如要切换帐户，请清除此字段",
     "root_folder_id": "根文件夹 ID",
-    "sms_code": "Sms code",
-    "sms_code-tips": "SMS code for the second device verification, fill it in and save again when login asks for it",
+    "sms_code": "短信验证码",
+    "sms_code-tips": "二次设备验证的短信验证码，登录提示需要时填写后再次保存",
     "type": "类型",
     "types": {
       "family": "家庭云",
@@ -199,10 +209,10 @@
     },
     "upload_thread": "上传线程",
     "upload_thread-tips": "1 ≤ 线程 ≤ 32",
-    "user_finger": "User finger",
-    "user_finger-tips": "Device fingerprint sent with login requests, generated and kept automatically when empty",
+    "user_finger": "设备指纹",
+    "user_finger-tips": "登录请求携带的设备指纹，留空时自动生成并保存",
     "username": "用户名",
-    "username-tips": "Not needed when an access token or refresh token is provided",
+    "username-tips": "已提供访问令牌或刷新令牌时无需填写",
     "validate_code": "验证码"
   },
   "189CloudTV": {
@@ -309,7 +319,7 @@
       "default": "默认"
     },
     "api_url_address": "API 地址",
-    "callback_concurrency": "Callback concurrency",
+    "callback_concurrency": "回调并发数",
     "callback_concurrency-tips": "Aliyun用户共享的最大有效下载",
     "client_id": "客户端 ID",
     "client_id-tips": "如果你没有，请留空",
@@ -383,7 +393,7 @@
     "access_key": "访问密钥",
     "access_key-tips": "用于身份验证的 Azure 存储的访问密钥。https://learn.microsoft.com/azure/storage/common/storage-account-keys-management",
     "container_name": "容器名称",
-    "container_name-tips": "Azure 存储容器名称（需在 Azure 门户中创建，路径：数据存储 > 容器）。https://learn.microsoft.com/azure/storage/blobs/blob-containers-portal",
+    "container_name-tips": "Azure 存储容器名称（需在 Azure 门户中创建，路径：数据存储 \u003e 容器）。https://learn.microsoft.com/azure/storage/blobs/blob-containers-portal",
     "endpoint": "端点",
     "endpoint-tips": "例如：https://accountname.blob.core.windows.net/。Azure 存储的完整端点 URL，包括唯一的存储帐户名称（3~24 个数字和小写字母）。",
     "root_folder_path": "根文件夹路径",
@@ -528,6 +538,8 @@
       "false": "否",
       "true": "是"
     },
+    "disable_resumable_upload": "禁用断点续传上传",
+    "disable_resumable_upload-tips": "关闭上传的暂停/继续：不再预先把密文写入临时目录，上传中断后必须从头重传",
     "encrypted_suffix": "加密后缀",
     "encrypted_suffix-tips": "高级选项！加密的文件将使用此后缀",
     "filename_encoding": "文件名编码",
@@ -553,6 +565,30 @@
     "show_hidden-tips": "显示隐藏目录以及文件",
     "thumbnail": "缩略图",
     "thumbnail-tips": "启用在缩略图文件夹下预先生成的缩略图"
+  },
+  "CtFile": {
+    "base_url": "API 地址",
+    "base_url-tips": "API 基础地址",
+    "cloud_type": "云盘类型",
+    "cloud_types": {
+      "private": "私有云",
+      "public": "公有云"
+    },
+    "order_by": "排序依据",
+    "order_bys": {
+      "name": "文件名称",
+      "size": "文件大小",
+      "time": "修改时间"
+    },
+    "order_direction": "排序方式",
+    "order_directions": {
+      "asc": "升序",
+      "desc": "降序"
+    },
+    "root_folder_id": "根文件夹 ID",
+    "session": "会话令牌",
+    "session-tips": "从开放接口登录密钥管理中获取的 OpenAPI 会话令牌",
+    "user_agent": "User Agent"
   },
   "Degoo": {
     "access_token": "访问令牌",
@@ -605,7 +641,7 @@
     "upload_thread": "上传线程"
   },
   "DoubaoNew": {
-    "app_id": "App ID",
+    "app_id": "应用 ID",
     "app_id-tips": "豆包 App ID",
     "auth_client_id": "认证客户端 ID",
     "auth_client_id-tips": "豆包 Biz 认证客户端 ID",
@@ -880,6 +916,8 @@
     "thumb_concurrency-tips": "同时生成缩略图的数量。这控制了可以并行生成多少缩略图。",
     "thumbnail": "缩略图",
     "thumbnail-tips": "启用缩略图",
+    "thumbnail_width": "缩略图宽度",
+    "thumbnail_width-tips": "缩略图宽度（像素），高度按比例缩放；设为 0 时使用原始宽度",
     "video_thumb_pos": "视频缩略图",
     "video_thumb_pos-tips": "视频缩略图的位置。如果该值是一个数字（整数点浮点），它代表几秒钟的时间。如果值以“%”结尾，则代表视频持续时间的百分比。"
   },
@@ -934,7 +972,7 @@
     "root_folder_path": "根文件夹路径"
   },
   "MoPan": {
-    "cloud_id": "Cloud ID",
+    "cloud_id": "云盘 ID",
     "device_info": "设备信息",
     "order_by": "排序依据",
     "order_bys": {
@@ -1533,9 +1571,11 @@
   },
   "WoPan": {
     "access_token": "访问令牌",
+    "access_token-tips": "提供刷新令牌时可选；缺失或过短时会自动刷新",
     "family_id": "家庭 ID",
     "family_id-tips": "如果您想要使用您的个人空间，请保持为空",
     "refresh_token": "刷新令牌",
+    "refresh_token-tips": "请提供刷新令牌，或提供至少 16 个字符的访问令牌",
     "root_folder_id": "根文件夹 ID",
     "sort_rule": "排序规则",
     "sort_rules": {
@@ -1585,7 +1625,7 @@
     },
     "root_folder_path": "根文件夹路径",
     "smallChannelName": "普通文件渠道名称",
-    "smallChannelName-tips": "普通文件的频道名称（通常<20MB）",
+    "smallChannelName-tips": "普通文件的频道名称（通常\u003c20MB）",
     "token": "令牌",
     "token-tips": "认证令牌",
     "uploadThread": "上传线程数",
@@ -1727,6 +1767,7 @@
     "Cloudreve": "Cloudreve",
     "Cloudreve V4": "Cloudreve V4",
     "Crypt": "Crypt",
+    "CtFile": "CtFile",
     "Degoo": "Degoo",
     "Doge": "多吉云",
     "Doubao": "豆包",

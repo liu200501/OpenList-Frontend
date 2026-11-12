@@ -152,6 +152,19 @@ export const ContextMenu = () => {
         <CollectItemContent favorited={selectedAllFavorited()} />
       </Item>
       <Item
+        // 目录也可以生成种子：后端会递归展开目录下的所有文件
+        hidden={() => isShare() || !haveSelected()}
+        onClick={() => {
+          const objs = selectedObjs()
+          bus.emit("generate_transfer_seed", {
+            paths: objs.map((obj) => pathJoin(pathname(), obj.name)),
+            hasDir: objs.some((obj) => obj.is_dir),
+          })
+        }}
+      >
+        <ItemContent name="generate_transfer_seed" />
+      </Item>
+      <Item
         hidden={() => {
           return (
             isShare() ||

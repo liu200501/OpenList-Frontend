@@ -24,7 +24,7 @@ main() {
     parse_args "$@"
     set_defaults
     check_git_version_and_commit
-    update_package_version
+    set_build_version
     if [[ "$LITE_FLAG" == "true" ]]; then
         archive_name="openlist-frontend-dist-lite-${version_tag}"
     else
@@ -104,7 +104,7 @@ enforce_git_tag() {
 
 # Validate git tag against package.json version
 validate_git_tag() {
-    package_version=$(grep '"version":' package.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+    package_version=$(node -p 'require("./package.json").version')
     git_version_clean=${git_version#v}
     if [[ "$git_version_clean" != "$package_version" ]]; then
         log_error "Package.json version (${package_version}) does not match git tag (${git_version_clean})."
@@ -114,22 +114,23 @@ validate_git_tag() {
 
 # Fallback to default git tag for development builds
 fallback_git_tag() {
-    git tag -d edge >/dev/null 2>&1 || true
-    git_version=$(git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0")
+    if ! git_version=$(git describe --abbrev=0 --tags --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null); then
+        git_version_clean=$(node -p 'require("./package.json").version')
+        return
+    fi
+
     git_version_clean=${git_version#v}
-    git_version_clean=${git_version_clean%%-*}
+    if [[ "$git_version_clean" =~ ^([0-9]+\.[0-9]+\.[0-9]+)([-+][0-9A-Za-z.-]+)?$ ]]; then
+        git_version_clean=${BASH_REMATCH[1]}
+    else
+        git_version_clean=$(node -p 'require("./package.json").version')
+    fi
 }
 
-# Update package.json version
-update_package_version() {
+# Set the version for the build
+set_build_version() {
     if [[ "$BUILD_TYPE" == "dev" ]]; then
-        # Handle both BSD and GNU sed syntax
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i "" "s/\"version\": *\"[^\"]*\"/\"version\": \"${git_version_clean}\"/" package.json
-        else
-            sed -i "s/\"version\": *\"[^\"]*\"/\"version\": \"${git_version_clean}\"/" package.json
-        fi
-        log_success "Package.json version updated to ${git_version_clean}"
+        log_info "Using ${git_version_clean} as the development build version"
         version_tag="v${git_version_clean}-${commit}"
         log_build "Building DEV version ${version_tag}..."
     elif [[ "$BUILD_TYPE" == "release" ]]; then
@@ -149,8 +150,15 @@ build_project() {
     log_step "==== Building i18n ===="
     # 使用本地 src/lang 下的 JSON 作为翻译源，直接生成 entry.ts 并补齐缺失语言文件。
     # 不再调用 Crowdin，也不再从 GitHub Release 下载 i18n.tar.gz 覆盖源码。
-    log_info "Running i18n build script to generate entry.ts..."
-    node ./scripts/i18n.mjs
+    # 校验永远执行：--skip-i18n 只跳过生成，不允许跳过检查
+    log_info "Checking i18n dictionaries..."
+    node ./scripts/check-i18n.mjs
+    if [[ "$SKIP_I18N" == "true" ]]; then
+        log_info "--skip-i18n: 使用现有 src/lang，跳过 entry.ts 生成"
+    else
+        log_info "Running i18n build script to generate entry.ts..."
+        node ./scripts/i18n.mjs
+    fi
 
     log_step "==== Building project ===="
     if [[ "$LITE_FLAG" == "true" ]]; then

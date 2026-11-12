@@ -34,7 +34,7 @@ function fixLegacyPolyfillDataSrc(): Plugin {
 
 // 用 127.0.0.1 而不是 localhost：Windows 下 localhost 可能优先解析到 ::1，
 // 而后端只监听 IPv4，会导致代理 502。
-const DEV_BACKEND = process.env.DEV_PROXY_TARGET || "http://127.0.0.1:5248"
+const DEV_BACKEND = process.env.DEV_PROXY_TARGET || "http://127.0.0.1:5246"
 
 // 除 /api 外，raw 文件相关路由也必须代理到后端。
 // 否则 vite 的 SPA fallback 会把这些请求当成前端路由，返回 200 + index.html，

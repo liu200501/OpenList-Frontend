@@ -1,7 +1,7 @@
 import { password } from "~/store"
 import { EmptyResp } from "~/types"
 import { r } from "~/utils"
-import { SetUpload, Upload } from "./types"
+import { seedUploadHeaders, SetUpload, Upload } from "./types"
 import { calculateHash } from "./util"
 import { createSpeedTracker } from "./speed"
 export const StreamUpload: Upload = async (
@@ -11,6 +11,7 @@ export const StreamUpload: Upload = async (
   asTask = false,
   overwrite = false,
   rapid = false,
+  seedOptions,
 ): Promise<undefined> => {
   const trackSpeed = createSpeedTracker(setUpload, file.size)
   let headers: { [k: string]: any } = {
@@ -20,6 +21,7 @@ export const StreamUpload: Upload = async (
     "Last-Modified": file.lastModified,
     Password: password(),
     Overwrite: overwrite.toString(),
+    ...seedUploadHeaders(seedOptions),
   }
   if (rapid) {
     setUpload("status", "hashing")

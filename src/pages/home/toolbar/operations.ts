@@ -8,7 +8,7 @@ import { CgFileAdd, CgFolderAdd, CgFolderRemove } from "solid-icons/cg"
 import { AiOutlineCloudDownload } from "solid-icons/ai"
 import { ImMoveUp } from "solid-icons/im"
 import { BiRegularRename } from "solid-icons/bi"
-import { FaSolidMagnet } from "solid-icons/fa"
+import { FaSolidMagnet, FaSolidSeedling } from "solid-icons/fa"
 import { FiExternalLink } from "solid-icons/fi"
 import { FaSolidStar } from "solid-icons/fa"
 
@@ -37,6 +37,7 @@ export const operations: Operations = {
   share: { icon: CgShare, color: "$primary9" },
   offline_download_torrent: { icon: FaSolidMagnet, color: "$accent9" },
   collect: { icon: FaSolidStar, color: "$warning9" },
+  generate_transfer_seed: { icon: FaSolidSeedling, color: "$success9" },
 }
 // interface Operation {
 //   label: string;
