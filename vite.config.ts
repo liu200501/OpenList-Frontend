@@ -50,6 +50,7 @@ const RAW_FILE_ROUTES = [
   "/dav/", // WebDAV
   "/i/", // plist
   "/tc/", // 转码播放 m3u8 / 切片
+  "/cryptmap/", // crypt 明文/密文对照页
 ]
 
 export default defineConfig({
