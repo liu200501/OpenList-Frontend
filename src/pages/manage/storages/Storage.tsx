@@ -15,10 +15,11 @@ import {
 import { Show } from "solid-js"
 import { useFetch, useRouter, useT } from "~/hooks"
 import { getMainColor } from "~/store"
-import { MountDetails, PEmptyResp, Storage } from "~/types"
+import { MountDetails, PEmptyResp, PResp, Storage } from "~/types"
 import {
   handleResp,
   handleRespWithNotifySuccess,
+  joinBase,
   notify,
   r,
   showDiskUsage,
@@ -46,6 +47,30 @@ function StorageOp(props: StorageProps) {
       }`,
     ),
   )
+  // crypt 存储才有「明文 ↔ 密文」对照页；签名由后端签发，这里只负责换地址
+  const [nameMapLoading, getNameMapLink] = useFetch(
+    (): PResp<{ url: string; name: string }> =>
+      r.get(`/admin/storage/namemap?id=${props.storage.id}`),
+  )
+  const openNameMap = async () => {
+    // 先同步开窗：await 之后 window.open 会被浏览器当成非用户手势而拦截
+    const win = window.open("", "_blank")
+    const resp = await getNameMapLink()
+    handleResp(
+      resp,
+      (data) => {
+        const url = joinBase(data.url)
+        if (win) {
+          win.location.replace(url)
+        } else {
+          window.open(url, "_blank")
+        }
+      },
+      () => {
+        win?.close()
+      },
+    )
+  }
   return (
     <>
       <Button
@@ -55,6 +80,11 @@ function StorageOp(props: StorageProps) {
       >
         {t("global.edit")}
       </Button>
+      <Show when={props.storage.driver === "Crypt"}>
+        <Button loading={nameMapLoading()} onClick={openNameMap}>
+          {t("storages.other.namemap")}
+        </Button>
+      </Show>
       <Button
         loading={enableOrDisableLoading()}
         colorScheme={props.storage.disabled ? "success" : "warning"}
