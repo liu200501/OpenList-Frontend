@@ -6,6 +6,8 @@
   "move": "移动存储中的文件到另一个存储",
   "decompress": "下载并解压缩文件",
   "decompress_upload": "上传解压的文件到目标存储",
+  "seed_generate": "生成种子（计算哈希）",
+  "seed_save": "保存种子 / 秒传",
   "done": "已完成",
   "undone": "运行中",
   "clear_succeeded": "清除成功项",

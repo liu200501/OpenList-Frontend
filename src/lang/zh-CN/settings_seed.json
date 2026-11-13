@@ -1,0 +1,23 @@
+{
+  "site_config": "站点配置",
+  "site_url": "站点 URL",
+  "site_url_help": "生成分享链接时写入种子来源的公开基础 URL。留空则使用当前请求的来源地址。",
+  "default_matrix": "默认哈希矩阵",
+  "default_matrix_help": "从文件列表生成种子时默认勾选的哈希。生成时 Torrent 强制使用 SHA-1，CAS 强制使用 MD5。",
+  "whole": "整个文件",
+  "pieces": "分片",
+  "default_format": "默认格式",
+  "default_format_help": "种子生成对话框中默认选中的格式。",
+  "format_policies": "自动格式策略",
+  "format_policies_help": "作为附属文件自动生成的格式。各存储仍可覆盖全局策略。",
+  "oss_format": "OSS（.oss）",
+  "torrent_format": "Torrent（.torrent）",
+  "cas_format": "CAS（.cas）",
+  "other_options": "其他选项",
+  "auto_generate": "上传时自动生成种子",
+  "auto_generate_help": "上传时按上述格式策略生成附属种子文件。",
+  "single_direct_preview": "单文件种子直接预览",
+  "single_direct_preview_help": "当种子只包含一个文件时，直接打开该文件而不是种子详情页。",
+  "cas_direct_access": "CAS 直连访问",
+  "cas_direct_access_help": "打开单文件 CAS 种子时，将其秒传到同一目录并预览还原后的文件。"
+}

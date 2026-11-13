@@ -564,7 +564,9 @@
     "thumbnail": "Thumbnail",
     "thumbnail-tips": "enable thumbnail which pre-generated under .thumbnails folder",
     "disable_resumable_upload": "Disable resumable upload",
-    "disable_resumable_upload-tips": "Turn off pause/resume for uploads: no ciphertext is pre-written to the temp dir, and an interrupted upload has to restart from the beginning"
+    "disable_resumable_upload-tips": "Turn off pause/resume for uploads: no ciphertext is pre-written to the temp dir, and an interrupted upload has to restart from the beginning",
+    "name_map_scan": "Name map scan",
+    "name_map_scan-tips": "build a full plaintext/ciphertext name index in the background on startup (slow on large drives)"
   },
   "CtFile": {
     "session": "Session",
@@ -1048,7 +1050,11 @@
       "us": "Us"
     },
     "root_folder_path": "Root folder path",
-    "tenant_id": "Tenant id"
+    "tenant_id": "Tenant id",
+    "is_sharepoint": "Is sharepoint",
+    "is_sharepoint-tips": "Mount a SharePoint site's default document library instead of a user's OneDrive",
+    "site_id": "Site id",
+    "site_id-tips": "One of: <host>,<siteGuid>,<webGuid>; <host>:/sites/<name>; or a full site URL. Point it at the site that owns the library — a bare host resolves to the empty root-site library"
   },
   "OpenList": {
     "forward_archive_requests": "Forward archive requests",

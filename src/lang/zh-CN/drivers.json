@@ -393,7 +393,7 @@
     "access_key": "访问密钥",
     "access_key-tips": "用于身份验证的 Azure 存储的访问密钥。https://learn.microsoft.com/azure/storage/common/storage-account-keys-management",
     "container_name": "容器名称",
-    "container_name-tips": "Azure 存储容器名称（需在 Azure 门户中创建，路径：数据存储 \u003e 容器）。https://learn.microsoft.com/azure/storage/blobs/blob-containers-portal",
+    "container_name-tips": "Azure 存储容器名称（需在 Azure 门户中创建，路径：数据存储 > 容器）。https://learn.microsoft.com/azure/storage/blobs/blob-containers-portal",
     "endpoint": "端点",
     "endpoint-tips": "例如：https://accountname.blob.core.windows.net/。Azure 存储的完整端点 URL，包括唯一的存储帐户名称（3~24 个数字和小写字母）。",
     "root_folder_path": "根文件夹路径",
@@ -564,7 +564,9 @@
     "show_hidden": "显示隐藏",
     "show_hidden-tips": "显示隐藏目录以及文件",
     "thumbnail": "缩略图",
-    "thumbnail-tips": "启用在缩略图文件夹下预先生成的缩略图"
+    "thumbnail-tips": "启用在缩略图文件夹下预先生成的缩略图",
+    "name_map_scan": "名称对照索引扫描",
+    "name_map_scan-tips": "启动时在后台建立完整的明文/密文名称对照索引（大容量存储会较慢）"
   },
   "CtFile": {
     "base_url": "API 地址",
@@ -1048,7 +1050,11 @@
       "us": "美国版"
     },
     "root_folder_path": "根文件夹路径",
-    "tenant_id": "租户 ID"
+    "tenant_id": "租户 ID",
+    "is_sharepoint": "是否 SharePoint 站点",
+    "is_sharepoint-tips": "挂载 SharePoint 站点的默认文档库，而非用户的 OneDrive",
+    "site_id": "站点 ID",
+    "site_id-tips": "可填以下之一：<host>,<siteGuid>,<webGuid>；<host>:/sites/<name>；或完整站点 URL。请指向拥有该文档库的站点 —— 仅填主机名会解析到空的根站点文档库"
   },
   "OpenList": {
     "forward_archive_requests": "转发压缩文件请求",
@@ -1625,7 +1631,7 @@
     },
     "root_folder_path": "根文件夹路径",
     "smallChannelName": "普通文件渠道名称",
-    "smallChannelName-tips": "普通文件的频道名称（通常\u003c20MB）",
+    "smallChannelName-tips": "普通文件的频道名称（通常<20MB）",
     "token": "令牌",
     "token-tips": "认证令牌",
     "uploadThread": "上传线程数",
