@@ -282,9 +282,13 @@ export const smartCountMsg = (filterType?: ObjType) => {
 }
 
 export const [uploadConfig, setUploadConfig] = createStore({
-  asTask: false,
+  // 默认走「添加为任务」：crypt 会在入队前把密文落到 temp，
+  // 内存只占 1MB 缓冲，而不是让底层驱动把整份文件 mmap 进内存。
+  asTask: true,
   overwrite: false,
-  rapid: true,
+  // 默认关闭「尝试秒传」：加密存储每个文件随机 nonce，密文哈希永远匹配不上，
+  // 勾选只会让浏览器把整个文件读一遍算 md5/sha1/sha256，纯属浪费。
+  rapid: false,
 })
 
 export const [shouldKeepState, setShouldKeepState] = createSignal(false)

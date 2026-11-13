@@ -139,7 +139,11 @@ const Upload = () => {
 
   // All upload methods are available by default
   const uploaders = getUploads()
-  const [curUploader, setCurUploader] = createSignal(uploaders[0])
+  // 默认选 Stream（PUT /fs/put 原始请求体）：配合默认开启的「添加为任务」，
+  // 大文件不会在底层驱动里被整份缓存进内存。
+  const [curUploader, setCurUploader] = createSignal(
+    uploaders.find((u) => u.name === "Stream") ?? uploaders[0],
+  )
   // multipart sessions are synchronous pipelines with their own progress and
   // retry semantics; "add as task" does not apply to them
   const asTaskUnsupported = () => curUploader()?.name === "Multipart"
