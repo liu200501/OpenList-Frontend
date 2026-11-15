@@ -529,6 +529,8 @@
       "off": "Off",
       "standard": "Standard"
     },
+    "folder_thumbnail": "Folder cover",
+    "folder_thumbnail-tips": "Use the first image (sorted by name) inside a folder as its thumbnail (one extra directory listing and thumbnail probes per subfolder; at most 50 folders per listing)",
     "password": "Password",
     "password-tips": "the main password",
     "remote_path": "Remote path",

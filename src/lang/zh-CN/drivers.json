@@ -543,6 +543,8 @@
       "off": "关闭",
       "standard": "标准"
     },
+    "folder_thumbnail": "文件夹封面",
+    "folder_thumbnail-tips": "用文件夹内按名称排序的第一张图片作为该文件夹的缩略图（每个子文件夹额外列一次目录并探测预生成缩略图；单次列目录最多处理 50 个文件夹）",
     "password": "密码",
     "password-tips": "主密码",
     "remote_path": "加密后文件存储路径",
