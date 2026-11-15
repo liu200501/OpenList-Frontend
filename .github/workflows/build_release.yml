@@ -1,8 +1,10 @@
 name: 构建与发布
 
 on:
+  # 监听所有 v 开头或纯数字开头的标签推送
   push:
     tags:
+      - "v*"
       - "[0-9]*"
   workflow_dispatch:
     inputs:
@@ -19,19 +21,9 @@ on:
         required: false
         type: string
       description:
-        description: "发布说明（留空则自动生成）"
+        description: "发布说明（支持 Markdown 格式，留空则自动生成）"
         required: false
         type: string
-      draft:
-        description: "创建为草稿发布"
-        required: false
-        type: boolean
-        default: false
-      prerelease:
-        description: "标记为预发布"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -66,14 +58,14 @@ jobs:
           VERSION="${{ github.event.inputs.version }}"
           RELEASE_TAG="${{ github.event.inputs.tag }}"
 
-          # 全程不出现 v，tag 直接用版本号
+          # 如果 tag 留空，直接使用 version
           if [ -z "$RELEASE_TAG" ]; then
             RELEASE_TAG="$VERSION"
           fi
 
           echo "正在准备发布 $RELEASE_TAG"
 
-          # 配置 git 身份（不依赖任何 Secret）
+          # 配置 git 身份
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -153,8 +145,6 @@ jobs:
           TAG="${{ steps.release_tag.outputs.tag }}"
           TITLE="${{ github.event.inputs.title }}"
           DESCRIPTION="${{ github.event.inputs.description }}"
-          DRAFT="${{ github.event.inputs.draft }}"
-          PRERELEASE="${{ github.event.inputs.prerelease }}"
 
           if [ -z "$TITLE" ]; then
             TITLE="发布 $TAG"
@@ -162,24 +152,17 @@ jobs:
 
           ARGS=(--title "$TITLE")
 
+          # 支持 Markdown：直接传入 description，如果为空则让 gh 自动生成
           if [ -n "$DESCRIPTION" ]; then
             ARGS+=(--notes "$DESCRIPTION")
           else
             ARGS+=(--generate-notes)
           fi
 
-          if [ "$DRAFT" = "true" ]; then
-            ARGS+=(--draft)
-          fi
-
-          if [ "$PRERELEASE" = "true" ]; then
-            ARGS+=(--prerelease)
-          fi
-
           gh release create "$TAG" \
             "${ARGS[@]}" \
-            dist/openlist-frontend-dist-v*.tar.gz \
-            lite-dist/openlist-frontend-dist-lite-v*.tar.gz \
+            dist/openlist-frontend-dist-*.tar.gz \
+            lite-dist/openlist-frontend-dist-lite-*.tar.gz \
             dist/i18n.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
