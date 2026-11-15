@@ -3,15 +3,15 @@ name: 构建与发布
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
+      - "[0-9]*"
   workflow_dispatch:
     inputs:
       version:
-        description: "目标版本号（例如 1.0.0），默认标签为 v<version>"
+        description: "目标版本号（不要 v，例如 4.2.9.9me）"
         required: true
         type: string
       tag:
-        description: "发布标签名（留空则使用 v<version>）"
+        description: "发布标签名（留空则使用 <version>）"
         required: false
         type: string
       title:
@@ -65,9 +65,12 @@ jobs:
           set -e
           VERSION="${{ github.event.inputs.version }}"
           RELEASE_TAG="${{ github.event.inputs.tag }}"
+
+          # 全程不出现 v，tag 直接用版本号
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v$VERSION"
+            RELEASE_TAG="$VERSION"
           fi
+
           echo "正在准备发布 $RELEASE_TAG"
 
           # 配置 git 身份（不依赖任何 Secret）
@@ -86,22 +89,36 @@ jobs:
           # 打上正式版本标签
           git tag -a "$RELEASE_TAG" -m "发布 $RELEASE_TAG" -f
 
-          # 推送提交和标签回仓库（创建 Release 时需要用到标签）
-          git push origin HEAD:${{ github.ref_name }} || git push origin HEAD
-          git push origin "$RELEASE_TAG" -f
+          # 推送提交到默认分支
+          git push origin HEAD:${{ github.event.repository.default_branch }} || git push origin HEAD
+
+          # 推送标签，带重试应对 GitHub 偶发 500
+          for i in 1 2 3; do
+            if git push origin "$RELEASE_TAG" -f; then
+              echo "标签 $RELEASE_TAG 推送成功"
+              break
+            fi
+            echo "标签推送失败，第 $i 次重试..."
+            sleep $((i * 5))
+            if [ "$i" -eq 3 ]; then
+              echo "标签推送连续失败，终止"
+              exit 1
+            fi
+          done
 
       # ============ 统一拿到本次构建用的标签 ============
       - name: 确定标签
         id: release_tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
             RELEASE_TAG="${{ github.event.inputs.tag }}"
             if [ -z "$RELEASE_TAG" ]; then
-              RELEASE_TAG="v${{ github.event.inputs.version }}"
+              RELEASE_TAG="$VERSION"
             fi
-            echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+            echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           fi
 
       # ============ 构建 regular 版本 ============
