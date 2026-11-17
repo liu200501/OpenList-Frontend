@@ -20,6 +20,8 @@
     "custom_cache_policies": "Custom Cache Policies",
     "custom_cache_policies-tips": "The cache expiration rules for this storage (minutes)",
     "down_proxy_url": "Download Proxy URL",
+    "download_proxy_url": "Download proxy",
+    "download_proxy_url-tips": "Per-storage HTTP(S) proxy for file downloads, e.g. http://127.0.0.1:10808. When set, downloads use this storage's proxy instead of direct links.",
     "disable_proxy_sign": "Disable Proxy Sign",
     "disable_proxy_sign-tips": "Disable sign for download proxy URL",
     "web_proxy": "Web Proxy",

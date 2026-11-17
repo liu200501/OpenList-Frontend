@@ -1034,6 +1034,8 @@
     "url": "URL"
   },
   "PikPak": {
+    "api_proxy": "API 代理",
+    "api_proxy-tips": "用于 PikPak API 请求（列目录、登录、取链接）的 HTTP(S) 代理，例如 http://127.0.0.1:10808；留空则不使用。",
     "captcha_token": "验证码",
     "device_id": "设备 ID",
     "disable_media_link": "禁用媒体链接",
@@ -1051,6 +1053,8 @@
     "username": "用户名"
   },
   "PikPakShare": {
+    "api_proxy": "API 代理",
+    "api_proxy-tips": "用于 PikPak API 请求（列目录、登录、取链接）的 HTTP(S) 代理，例如 http://127.0.0.1:10808；留空则不使用。",
     "device_id": "设备 ID",
     "platform": "平台",
     "platforms": {

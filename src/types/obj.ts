@@ -18,6 +18,7 @@ export interface Obj {
   created: string
   modified: string
   sign?: string
+  encrypted_name?: string
   thumb: string
   type: ObjType
   mount_details?: MountDetails

@@ -10,6 +10,7 @@ import { isObjFavorite, toggleObjFavorite } from "./collect"
 import { ObjType, StoreObj } from "~/types"
 import { bus, hoverColor } from "~/utils"
 import { getIconByObj } from "~/utils/icon"
+import { CipherCopyButton } from "./CipherCopyButton"
 import { ItemCheckbox, useSelectWithMouse } from "./helper"
 
 export const GridItem = (props: { obj: StoreObj; index: number }) => {
@@ -166,6 +167,7 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
           title={props.obj.name}
         >
           {props.obj.name}
+          <CipherCopyButton obj={props.obj} />
         </Text>
       </VStack>
     </Motion.div>

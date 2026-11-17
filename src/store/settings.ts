@@ -30,6 +30,14 @@ export const getSettingNumber = (key: string, defaultV?: number) => {
   }
   return defaultV ?? 0
 }
+/**
+ * Read a non-negative integer setting. Invalid, negative, or missing values
+ * fall back to `defaultV`.
+ */
+export const getSettingNonNegativeInt = (key: string, defaultV: number) => {
+  const value = parseInt(getSetting(key), 10)
+  return Number.isFinite(value) && value >= 0 ? value : defaultV
+}
 export const getMainColor = (): string => {
   if (window.OPENLIST_CONFIG.main_color) {
     return window.OPENLIST_CONFIG.main_color

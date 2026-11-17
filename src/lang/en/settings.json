@@ -43,6 +43,8 @@
   "ignore_paths-tips": "one path per line",
   "ignore_system_files": "Ignore system files",
   "ignore_system_files-tips": "When enabled, ignores common system files during upload (.DS_Store, desktop.ini, Thumbs.db, and files starting with ._)",
+  "image_preload_count": "Image preload count",
+  "image_preload_count-tips": "Number of images to preload on each side of the currently viewed image (default: 2)",
   "image_types": "Image types",
   "index_progress": "Index progress",
   "ldap_default_dir": "Ldap default dir",
