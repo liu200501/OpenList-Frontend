@@ -191,25 +191,49 @@ export function StorageGridItem(props: StorageProps) {
   )
 }
 
+// 长文本（挂载路径、状态错误串、备注）不能把操作列顶出屏幕：
+// 给每个单元格设上限并省略，操作列固定不换行。
+const cellStyle = {
+  maxWidth: "260px",
+  overflow: "hidden",
+  whiteSpace: "nowrap",
+  textOverflow: "ellipsis",
+}
+const opsCellStyle = {
+  minWidth: "180px",
+  whiteSpace: "nowrap",
+}
+
 export function StorageListItem(props: StorageProps) {
   const t = useT()
   return (
     <Tr>
-      <Td>{props.storage.mount_path}</Td>
-      <Td>{t(`drivers.drivers.${props.storage.driver}`)}</Td>
+      <Td css={cellStyle} title={props.storage.mount_path}>
+        {props.storage.mount_path}
+      </Td>
+      <Td css={cellStyle}>{t(`drivers.drivers.${props.storage.driver}`)}</Td>
       <Td>{props.storage.order}</Td>
       <Td>
         <StorageUsage details={props.storage.mount_details} />
       </Td>
-      <Td>
+      <Td
+        css={cellStyle}
+        title={t(
+          `storages.table_fields.status.${props.storage.status}`,
+          undefined,
+          props.storage.status,
+        )}
+      >
         {t(
           `storages.table_fields.status.${props.storage.status}`,
           undefined,
           props.storage.status,
         )}
       </Td>
-      <Td>{props.storage.remark}</Td>
-      <Td>
+      <Td css={cellStyle} title={props.storage.remark}>
+        {props.storage.remark}
+      </Td>
+      <Td css={opsCellStyle}>
         <HStack spacing="$2">
           <StorageOp {...props} />
         </HStack>

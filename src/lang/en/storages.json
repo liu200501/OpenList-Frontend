@@ -62,6 +62,7 @@
     "start_load_success": "Start loading",
     "load_all": "Reload All",
     "filter_by_driver": "Filter by driver",
+    "sort_by_driver": "Click to sort by driver",
     "namemap": "Plain / Cipher Map",
     "table_layout": "Table layout"
   }

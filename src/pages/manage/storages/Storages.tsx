@@ -1,7 +1,9 @@
 import {
+  Badge,
   Box,
   Button,
   Grid,
+  Heading,
   HStack,
   Select,
   SelectContent,
@@ -21,12 +23,22 @@ import {
   VStack,
   Switch as HopeSwitch,
 } from "@hope-ui/solid"
-import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  Match,
+  Show,
+  Switch,
+} from "solid-js"
 import { useFetch, useManageTitle, useRouter, useT } from "~/hooks"
 import { handleResp, notify, r } from "~/utils"
-import { EmptyResp, PageResp, Resp, Storage } from "~/types"
+import { EmptyResp, PageResp, Storage } from "~/types"
 import { StorageGridItem, StorageListItem } from "./Storage"
 import { createStorageSignal } from "@solid-primitives/storage"
+
+type DriverSort = "none" | "asc" | "desc"
 
 const Storages = () => {
   const t = useT()
@@ -40,28 +52,67 @@ const Storages = () => {
     const resp = await getStorages()
     handleResp(resp, (data) => setStorages(data.content))
   }
-  const [drivers, setDrivers] = createSignal<string[]>([])
   const [selectedDrivers, setSelectedDrivers] = createSignal<string[]>([])
-  const getDrivers = async () => {
-    const resp: Resp<string[]> = await r.get("/admin/driver/names")
-    handleResp(resp, (data) => setDrivers(data))
-  }
-  getDrivers()
   refresh()
+
+  const driverLabel = (driver: string) => t(`drivers.drivers.${driver}`)
+
+  // 只展示当前已挂载（已存在）的驱动类型，而不是后端支持的全部驱动。
+  const mountedDrivers = createMemo(() => {
+    const set = new Set<string>()
+    for (const s of storages()) set.add(s.driver)
+    return Array.from(set).sort((a, b) =>
+      driverLabel(a).localeCompare(driverLabel(b)),
+    )
+  })
+
+  // 当存储变化导致某个已选驱动不再存在时，清掉失效选择。
+  createEffect(() => {
+    const valid = new Set(mountedDrivers())
+    const next = selectedDrivers().filter((d) => valid.has(d))
+    if (next.length !== selectedDrivers().length) setSelectedDrivers(next)
+  })
+
   const loadAll = async () => {
     const resp: EmptyResp = await r.post("/admin/storage/load_all")
     handleResp(resp, () => {
       notify.success(t("storages.other.start_load_success"))
     })
   }
+
+  const [driverSort, setDriverSort] = createSignal<DriverSort>("none")
+  const toggleDriverSort = () => {
+    const cur = driverSort()
+    setDriverSort(cur === "asc" ? "desc" : cur === "desc" ? "none" : "asc")
+  }
+
   const shownStorages = createMemo(() => {
-    return storages().filter((storage) => {
-      if (selectedDrivers().length === 0) {
-        return true
-      }
+    const filtered = storages().filter((storage) => {
+      if (selectedDrivers().length === 0) return true
       return selectedDrivers().includes(storage.driver)
     })
+    const sort = driverSort()
+    if (sort === "none") return filtered
+    const sign = sort === "asc" ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      const cmp = driverLabel(a.driver).localeCompare(driverLabel(b.driver))
+      return sign * (cmp !== 0 ? cmp : a.mount_path.localeCompare(b.mount_path))
+    })
   })
+
+  // 非表格布局：按驱动分组。
+  const groupedStorages = createMemo(() => {
+    const groups = new Map<string, Storage[]>()
+    for (const s of shownStorages()) {
+      const arr = groups.get(s.driver) ?? []
+      arr.push(s)
+      groups.set(s.driver, arr)
+    }
+    return Array.from(groups.entries()).sort((a, b) =>
+      driverLabel(a[0]).localeCompare(driverLabel(b[0])),
+    )
+  })
+
   const [layout, setLayout] = createStorageSignal(
     "storages-layout",
     "grid" as "grid" | "table",
@@ -98,12 +149,11 @@ const Storages = () => {
         >
           {t("storages.other.load_all")}
         </Button>
-        <Show when={drivers().length > 0}>
+        <Show when={mountedDrivers().length > 0}>
           <Select
             multiple
             value={selectedDrivers()}
             onChange={setSelectedDrivers}
-            // variant="outline"
           >
             <SelectTrigger>
               <SelectPlaceholder>
@@ -114,12 +164,10 @@ const Storages = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectListbox>
-                <For each={drivers()}>
+                <For each={mountedDrivers()}>
                   {(item) => (
                     <SelectOption value={item}>
-                      <SelectOptionText>
-                        {t(`drivers.drivers.${item}`)}
-                      </SelectOptionText>
+                      <SelectOptionText>{driverLabel(item)}</SelectOptionText>
                       <SelectOptionIndicator />
                     </SelectOption>
                   )}
@@ -141,38 +189,55 @@ const Storages = () => {
       </HStack>
       <Switch>
         <Match when={layout() === "grid"}>
-          <Grid
-            w="$full"
-            gap="$2_5"
-            templateColumns={{
-              "@initial": "1fr",
-              "@lg": "repeat(auto-fill, minmax(324px, 1fr))",
-            }}
-          >
-            <For each={shownStorages()}>
-              {(storage) => (
-                <StorageGridItem storage={storage} refresh={refresh} />
+          <VStack w="$full" spacing="$4" alignItems="start">
+            <For each={groupedStorages()}>
+              {([driver, items]) => (
+                <VStack w="$full" spacing="$2" alignItems="start">
+                  <HStack spacing="$2">
+                    <Heading size="sm">{driverLabel(driver)}</Heading>
+                    <Badge colorScheme="info">{items.length}</Badge>
+                  </HStack>
+                  <Grid
+                    w="$full"
+                    gap="$2_5"
+                    templateColumns={{
+                      "@initial": "1fr",
+                      "@lg": "repeat(auto-fill, minmax(324px, 1fr))",
+                    }}
+                  >
+                    <For each={items}>
+                      {(storage) => (
+                        <StorageGridItem storage={storage} refresh={refresh} />
+                      )}
+                    </For>
+                  </Grid>
+                </VStack>
               )}
             </For>
-          </Grid>
+          </VStack>
         </Match>
         <Match when={layout() === "table"}>
           <Box w="$full" overflowX="auto">
             <Table highlightOnHover dense>
               <Thead>
                 <Tr>
-                  <For
-                    each={[
-                      "mount_path",
-                      "driver",
-                      "order",
-                      "usage",
-                      "status",
-                      "remark",
-                    ]}
+                  <Th>{t("storages.common.mount_path")}</Th>
+                  <Th
+                    onClick={toggleDriverSort}
+                    css={{ cursor: "pointer", userSelect: "none" }}
+                    title={t("storages.other.sort_by_driver")}
                   >
-                    {(title) => <Th>{t(`storages.common.${title}`)}</Th>}
-                  </For>
+                    {t("storages.common.driver")}
+                    <Show when={driverSort() !== "none"}>
+                      <Box as="span" ml="$1">
+                        {driverSort() === "asc" ? "▲" : "▼"}
+                      </Box>
+                    </Show>
+                  </Th>
+                  <Th>{t("storages.common.order")}</Th>
+                  <Th>{t("storages.common.usage")}</Th>
+                  <Th>{t("storages.common.status")}</Th>
+                  <Th>{t("storages.common.remark")}</Th>
                   <Th>{t("global.operations")}</Th>
                 </Tr>
               </Thead>
