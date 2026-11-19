@@ -39,7 +39,7 @@ import {
   ImageWithError,
 } from "~/components"
 import { useCDN, useRouter, useT, useLink } from "~/hooks"
-import { objStore, ObjStore } from "~/store"
+import { objStore, ObjStore, getSettingNonNegativeInt } from "~/store"
 import { Obj, ObjType } from "~/types"
 import { ext, formatDate, getFileSize, loadScriptIIFE } from "~/utils"
 
@@ -49,7 +49,15 @@ const ZOOM_MIN = 0.1
 const ZOOM_MAX = 10
 const ZOOM_WHEEL_FACTOR = 1.08
 const ZOOM_BTN_STEP = 0.25
-const PRELOAD_COUNT = 10 // ★ 之前被注释了，这里放开；不需要可删
+const DEFAULT_PRELOAD_COUNT = 2
+const MAX_PRELOAD_COUNT = 100
+
+/** Number of images to preload on each side of the current one. */
+const getPreloadCount = () =>
+  Math.min(
+    MAX_PRELOAD_COUNT,
+    getSettingNonNegativeInt("image_preload_count", DEFAULT_PRELOAD_COUNT),
+  )
 
 interface PreviewProps {
   images?: Obj[]
@@ -173,15 +181,16 @@ const Preview = (props: PreviewProps) => {
 
   const curIdx = () => images.findIndex((f) => f.name === objStore.obj.name)
 
-  // ── 预加载：把后 PRELOAD_COUNT 张图缓存到浏览器 ──
-  const preloadCache: HTMLImageElement[] = []
+  // ── 预加载：把前后若干张图缓存到浏览器，并按 url 复用已缓存的 Image ──
+  const preloadCache = new Map<string, HTMLImageElement>()
   const preloadAround = () => {
     const i = curIdx()
     if (i < 0) return
-    preloadCache.length = 0
+    const preloadCount = getPreloadCount()
+    const needed = new Set<string>()
 
     const offsets = []
-    for (let k = 1; k <= PRELOAD_COUNT; k++) {
+    for (let k = 1; k <= preloadCount; k++) {
       offsets.push(k, -k) // 后 k 张、前 k 张
     }
 
@@ -192,9 +201,20 @@ const Preview = (props: PreviewProps) => {
       if (isHeif(obj.name)) continue
       if (!isHeif(obj.name) && obj.type !== ObjType.IMAGE) continue
 
-      const img = new Image()
-      img.src = rawLink(obj)
-      preloadCache.push(img)
+      const url = rawLink(obj)
+      needed.add(url)
+      if (!preloadCache.has(url)) {
+        const img = new Image()
+        img.src = url
+        preloadCache.set(url, img)
+      }
+    }
+
+    // 丢弃不在当前预加载窗口内的旧缓存，避免无限增长
+    for (const url of preloadCache.keys()) {
+      if (!needed.has(url)) {
+        preloadCache.delete(url)
+      }
     }
   }
 
@@ -370,7 +390,7 @@ const Preview = (props: PreviewProps) => {
     window.removeEventListener("keydown", onKey)
     areaRef?.removeEventListener("wheel", onWheel)
     document.removeEventListener("fullscreenchange", updateFullscreen)
-    preloadCache.length = 0
+    preloadCache.clear()
   })
 
   const imgTransform = () =>

@@ -20,6 +20,8 @@
     "custom_cache_policies": "自定义缓存策略",
     "custom_cache_policies-tips": "此存储的缓存过期时间（分钟）",
     "down_proxy_url": "下载代理网址",
+    "download_proxy_url": "下载代理",
+    "download_proxy_url-tips": "仅本存储下载文件使用的 HTTP(S) 代理，例如 http://127.0.0.1:10808；设置后该存储下载将走代理而非直链。",
     "disable_proxy_sign": "禁用代理签名",
     "disable_proxy_sign-tips": "禁用下载代理网址的签名",
     "web_proxy": "网页代理",

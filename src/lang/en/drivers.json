@@ -1018,6 +1018,8 @@
     "url": "Url"
   },
   "PikPak": {
+    "api_proxy": "API proxy",
+    "api_proxy-tips": "HTTP(S) proxy for PikPak API requests (list, login, link), e.g. http://127.0.0.1:10808. Leave empty to use the default.",
     "captcha_token": "Captcha token",
     "device_id": "Device id",
     "disable_media_link": "Disable media link",
@@ -1033,6 +1035,8 @@
     "username": "Username"
   },
   "PikPakShare": {
+    "api_proxy": "API proxy",
+    "api_proxy-tips": "HTTP(S) proxy for PikPak API requests (list, login, link), e.g. http://127.0.0.1:10808. Leave empty to use the default.",
     "device_id": "Device id",
     "platform": "Platform",
     "platforms": {

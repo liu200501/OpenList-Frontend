@@ -1,17 +1,19 @@
 name: 构建与发布
 
 on:
+  # 监听所有 v 开头或纯数字开头的标签推送
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+*"
+      - "v*"
+      - "[0-9]*"
   workflow_dispatch:
     inputs:
       version:
-        description: "目标版本号（例如 1.0.0），默认标签为 v<version>"
+        description: "目标版本号（不要 v，例如 4.2.9.9me）"
         required: true
         type: string
       tag:
-        description: "发布标签名（留空则使用 v<version>）"
+        description: "发布标签名（留空则使用 <version>）"
         required: false
         type: string
       title:
@@ -19,19 +21,9 @@ on:
         required: false
         type: string
       description:
-        description: "发布说明（留空则自动生成）"
+        description: "发布说明（支持 Markdown 格式，留空则自动生成）"
         required: false
         type: string
-      draft:
-        description: "创建为草稿发布"
-        required: false
-        type: boolean
-        default: false
-      prerelease:
-        description: "标记为预发布"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -65,12 +57,15 @@ jobs:
           set -e
           VERSION="${{ github.event.inputs.version }}"
           RELEASE_TAG="${{ github.event.inputs.tag }}"
+
+          # 如果 tag 留空，直接使用 version
           if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="v$VERSION"
+            RELEASE_TAG="$VERSION"
           fi
+
           echo "正在准备发布 $RELEASE_TAG"
 
-          # 配置 git 身份（不依赖任何 Secret）
+          # 配置 git 身份
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -86,22 +81,36 @@ jobs:
           # 打上正式版本标签
           git tag -a "$RELEASE_TAG" -m "发布 $RELEASE_TAG" -f
 
-          # 推送提交和标签回仓库（创建 Release 时需要用到标签）
-          git push origin HEAD:${{ github.ref_name }} || git push origin HEAD
-          git push origin "$RELEASE_TAG" -f
+          # 推送提交到默认分支
+          git push origin HEAD:${{ github.event.repository.default_branch }} || git push origin HEAD
+
+          # 推送标签，带重试应对 GitHub 偶发 500
+          for i in 1 2 3; do
+            if git push origin "$RELEASE_TAG" -f; then
+              echo "标签 $RELEASE_TAG 推送成功"
+              break
+            fi
+            echo "标签推送失败，第 $i 次重试..."
+            sleep $((i * 5))
+            if [ "$i" -eq 3 ]; then
+              echo "标签推送连续失败，终止"
+              exit 1
+            fi
+          done
 
       # ============ 统一拿到本次构建用的标签 ============
       - name: 确定标签
         id: release_tag
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
             RELEASE_TAG="${{ github.event.inputs.tag }}"
             if [ -z "$RELEASE_TAG" ]; then
-              RELEASE_TAG="v${{ github.event.inputs.version }}"
+              RELEASE_TAG="$VERSION"
             fi
-            echo "tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+            echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           fi
 
       # ============ 构建 regular 版本 ============
@@ -136,8 +145,6 @@ jobs:
           TAG="${{ steps.release_tag.outputs.tag }}"
           TITLE="${{ github.event.inputs.title }}"
           DESCRIPTION="${{ github.event.inputs.description }}"
-          DRAFT="${{ github.event.inputs.draft }}"
-          PRERELEASE="${{ github.event.inputs.prerelease }}"
 
           if [ -z "$TITLE" ]; then
             TITLE="发布 $TAG"
@@ -145,24 +152,17 @@ jobs:
 
           ARGS=(--title "$TITLE")
 
+          # 支持 Markdown：直接传入 description，如果为空则让 gh 自动生成
           if [ -n "$DESCRIPTION" ]; then
             ARGS+=(--notes "$DESCRIPTION")
           else
             ARGS+=(--generate-notes)
           fi
 
-          if [ "$DRAFT" = "true" ]; then
-            ARGS+=(--draft)
-          fi
-
-          if [ "$PRERELEASE" = "true" ]; then
-            ARGS+=(--prerelease)
-          fi
-
           gh release create "$TAG" \
             "${ARGS[@]}" \
-            dist/openlist-frontend-dist-v*.tar.gz \
-            lite-dist/openlist-frontend-dist-lite-v*.tar.gz \
+            dist/openlist-frontend-dist-*.tar.gz \
+            lite-dist/openlist-frontend-dist-lite-*.tar.gz \
             dist/i18n.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

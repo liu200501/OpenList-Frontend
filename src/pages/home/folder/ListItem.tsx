@@ -33,6 +33,7 @@ import {
   nearlyFull,
 } from "~/utils"
 import { getIconByObj } from "~/utils/icon"
+import { CipherCopyButton } from "./CipherCopyButton"
 import { ItemCheckbox, useSelectWithMouse } from "./helper"
 
 export interface Col {
@@ -187,6 +188,7 @@ export const ListItem = (props: { obj: StoreObj; index: number }) => {
           >
             {props.obj.name}
           </Text>
+          <CipherCopyButton obj={props.obj} />
         </HStack>
         <Show
           fallback={
