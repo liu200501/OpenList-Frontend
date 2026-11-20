@@ -45,7 +45,7 @@ function parseLocalTorrent(buffer: Uint8Array): TorrentInfo {
   const data = bencode.decode(buffer as any)
   const info = data.info
   if (!info) {
-    throw new Error("Invalid torrent: missing info dict")
+    throw new Error(useT()("home.preview.torrent_invalid"))
   }
 
   // 计算 info_hash（SHA1 of bencoded info dict）
@@ -146,8 +146,9 @@ const TorrentPreview = () => {
       setSelectedFiles(info.files.map((_, i) => i))
     } catch (err) {
       console.error("Failed to parse torrent file:", err)
+      const reason = err instanceof Error ? err.message : String(err)
       setError(
-        `${t("home.toolbar.offline_download_enhanced.parse_failed")}: ${err}`,
+        `${t("home.toolbar.offline_download_enhanced.parse_failed")}: ${reason}`,
       )
     } finally {
       setLoading(false)

@@ -1,4 +1,5 @@
 import { PluginItem, PluginType } from "~/types"
+import { useT } from "~/hooks"
 import { loadScriptIIFE } from "./load_external"
 
 export interface ExtractedPluginPackage {
@@ -183,9 +184,7 @@ async function extractZipNative(
     }
   }
   if (eocdOffset === -1) {
-    throw new Error(
-      "Invalid ZIP file: End of Central Directory signature not found",
-    )
+    throw new Error(useT()("plugins.zip_invalid_eocd"))
   }
 
   const cdCount = view.getUint16(eocdOffset + 10, true)
@@ -240,9 +239,7 @@ async function extractZipNative(
         const decompressedStream = await new Response(ds.readable).arrayBuffer()
         files[fileName] = new Uint8Array(decompressedStream)
       } else {
-        throw new Error(
-          "DecompressionStream is not supported in this environment",
-        )
+        throw new Error(useT()("plugins.zip_decompress_unsupported"))
       }
     }
   }
@@ -261,7 +258,7 @@ async function extractZipFallback(
   }
   const fflate = (window as any).fflate
   if (!fflate) {
-    throw new Error("Failed to load ZIP extraction module")
+    throw new Error(useT()("plugins.zip_module_load_failed"))
   }
 
   return new Promise((resolve, reject) => {

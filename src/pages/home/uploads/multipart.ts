@@ -1,6 +1,7 @@
 import { getSettingNumber, password } from "~/store"
 import { Resp } from "~/types"
 import { r } from "~/utils"
+import { useT } from "~/hooks"
 import { SetUpload, Upload } from "./types"
 import { calculateHash } from "./util"
 import { StreamUpload } from "./stream"
@@ -116,7 +117,7 @@ export const MultipartUpload: Upload = async (
       r.post("/fs/multipart/init", undefined, { headers: initHeaders }),
     )
     if (initResp) break
-    if (i >= 2) throw new Error("multipart init failed: network error")
+    if (i >= 2) throw new Error(useT()("home.upload.multipart_init_failed"))
     await sleep(1000 * (i + 1))
   }
   if (initResp!.code !== 200) {

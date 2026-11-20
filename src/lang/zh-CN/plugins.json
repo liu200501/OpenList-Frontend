@@ -65,5 +65,19 @@
     "paste_json": "在此粘贴插件 JSON 数据",
     "import_success": "插件导入成功"
   },
-  "empty_installed": "未安装插件。点击 “安装插件” 上传ZIP 或从 URL 安装。"
+  "empty_installed": "未安装插件。点击 “安装插件” 上传ZIP 或从 URL 安装。",
+  "root_access": "Root 权限",
+  "community": "社区",
+  "invalid_zip": "请选择 .zip 格式的插件压缩包",
+  "zip_parsed": "ZIP 插件包解析成功",
+  "zip_parse_failed": "ZIP 解析失败：{{error}}",
+  "zip_required": "请先上传有效的插件 ZIP 文件",
+  "manifest_url_required": "请输入插件清单 URL",
+  "plugin_not_found": "未找到插件：{{id}}",
+  "invalid_plugins_json": "JSON 无效：必须是插件数组",
+  "json_parse_failed": "JSON 解析失败：{{error}}",
+  "plugin_icon": "插件图标",
+  "zip_invalid_eocd": "无效的 ZIP 文件：未找到中央目录结束标记",
+  "zip_decompress_unsupported": "当前浏览器不支持流式解压（DecompressionStream）",
+  "zip_module_load_failed": "ZIP 解压模块加载失败"
 }

@@ -1,6 +1,7 @@
 import { Upload, SetUpload } from "./types"
 import { createSpeedTracker } from "./speed"
 import { r, pathDir } from "~/utils"
+import { useT } from "~/hooks"
 
 export const HttpDirectUpload: Upload = async (
   uploadPath: string,
@@ -32,7 +33,7 @@ export const HttpDirectUpload: Upload = async (
 
   // If upload_info is null, direct upload is not supported - fallback to Stream
   if (!uploadInfo) {
-    throw new Error("Http Direct Upload not supported")
+    throw new Error(useT()("home.upload.direct_not_supported"))
   }
 
   // Upload file directly to storage
@@ -88,12 +89,16 @@ async function uploadSingle(
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(undefined)
       } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`))
+        reject(
+          new Error(
+            useT()("home.upload.upload_failed_status", { status: xhr.status }),
+          ),
+        )
       }
     })
 
     xhr.addEventListener("error", () => {
-      reject(new Error("Upload failed"))
+      reject(new Error(useT()("home.upload.upload_failed")))
     })
 
     xhr.open(method, uploadURL)

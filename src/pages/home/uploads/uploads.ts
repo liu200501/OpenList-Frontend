@@ -8,6 +8,8 @@ import { Upload } from "./types"
 type Uploader = {
   upload: Upload
   name: string
+  // 显示给用户的名称所用的 i18n key，name 仅作为内部标识
+  labelKey: string
   available: () => boolean
 }
 
@@ -19,11 +21,13 @@ type Uploader = {
 const AllUploads: Uploader[] = [
   {
     name: "Multipart",
+    labelKey: "home.upload.methods.multipart",
     upload: MultipartUpload,
     available: () => getSettingBool("multipart_enabled"),
   },
   {
     name: "HTTP Direct",
+    labelKey: "home.upload.methods.http_direct",
     upload: HttpDirectUpload,
     available: () => {
       return objStore.direct_upload_tools?.includes("HttpDirect") || false
@@ -31,16 +35,21 @@ const AllUploads: Uploader[] = [
   },
   {
     name: "Stream",
+    labelKey: "home.upload.methods.stream",
     upload: StreamUpload,
     available: () => true,
   },
   {
     name: "Form",
+    labelKey: "home.upload.methods.form",
     upload: FormUpload,
     available: () => true,
   },
 ]
 
-export const getUploads = (): Pick<Uploader, "name" | "upload">[] => {
+export const getUploads = (): Pick<
+  Uploader,
+  "name" | "labelKey" | "upload"
+>[] => {
   return AllUploads.filter((u) => u.available())
 }

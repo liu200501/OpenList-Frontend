@@ -140,7 +140,17 @@
     "user_domain_id": "用户域 ID",
     "user_domain_id-tips": "Cookie中的ud_id项，需要查看空间使用情况则填写",
     "username": "用户名",
-    "username-tips": "仅在配合邮箱 Cookie 使用密码登录回退时需要。"
+    "username-tips": "仅在配合邮箱 Cookie 使用密码登录回退时需要。",
+    "client_type": "客户端类型",
+    "client_type-tips": "上报给个人云 API 的客户端类型。web（9）允许上传最大 50 GB 的文件；pc（13）将单文件上传上限提高到 500 GB。",
+    "client_types": {
+      "pc": "PC",
+      "web": "Web"
+    },
+    "thumbnail_proxy_enabled": "启用缩略图代理",
+    "thumbnail_proxy_enabled-tips": "开启缩略图代理：缩略图地址会被替换为下方代理地址，用于绕过无法访问的 *.cmecloud.cn 直链",
+    "thumbnail_proxy_url": "缩略图代理地址",
+    "thumbnail_proxy_url-tips": "缩略图代理 URL 前缀。代理需接受 ?url=<原始缩略图地址> 并转发请求，同时保留原始 Host 头以通过 AWS 签名校验。示例：https://your-proxy.com/proxy?url="
   },
   "189Cloud": {
     "cookie": "Cookie",
@@ -554,7 +564,11 @@
     "show_hidden": "显示隐藏",
     "show_hidden-tips": "显示隐藏目录以及文件",
     "thumbnail": "缩略图",
-    "thumbnail-tips": "启用在缩略图文件夹下预先生成的缩略图"
+    "thumbnail-tips": "启用在缩略图文件夹下预先生成的缩略图",
+    "disable_resumable_upload": "禁用断点续传",
+    "disable_resumable_upload-tips": "关闭上传的暂停/续传：不再向临时目录预写密文，上传中断后需从头开始",
+    "name_map_scan": "名称映射扫描",
+    "name_map_scan-tips": "启动时在后台构建完整的明文/密文名称索引（大容量存储较慢）"
   },
   "Degoo": {
     "access_token": "访问令牌",
@@ -883,7 +897,9 @@
     "thumbnail": "缩略图",
     "thumbnail-tips": "启用缩略图",
     "video_thumb_pos": "视频缩略图",
-    "video_thumb_pos-tips": "视频缩略图的位置。如果该值是一个数字（整数点浮点），它代表几秒钟的时间。如果值以“%”结尾，则代表视频持续时间的百分比。"
+    "video_thumb_pos-tips": "视频缩略图的位置。如果该值是一个数字（整数点浮点），它代表几秒钟的时间。如果值以“%”结尾，则代表视频持续时间的百分比。",
+    "thumbnail_width": "缩略图宽度",
+    "thumbnail_width-tips": "缩略图宽度（像素），高度按比例缩放。设为 0 时使用原始宽度。"
   },
   "MediaFire": {
     "chunk_size": "分片大小",
@@ -1012,7 +1028,11 @@
       "us": "美国版"
     },
     "root_folder_path": "根文件夹路径",
-    "tenant_id": "租户 ID"
+    "tenant_id": "租户 ID",
+    "is_sharepoint": "挂载 SharePoint 站点",
+    "is_sharepoint-tips": "挂载 SharePoint 站点的默认文档库，而不是用户的 OneDrive",
+    "site_id": "站点 ID",
+    "site_id-tips": "可为以下之一：<host>,<siteGuid>,<webGuid>；<host>:/sites/<name>；或完整的站点 URL。请指向拥有该文档库的站点——只填主机名会解析到空的根站点文档库"
   },
   "OpenList": {
     "forward_archive_requests": "转发压缩文件请求",
@@ -1551,7 +1571,9 @@
       "size_desc": "大小降序",
       "time_asc": "时间升序",
       "time_desc": "时间降序"
-    }
+    },
+    "access_token-tips": "提供刷新令牌时可留空；令牌缺失或过短时会自动刷新",
+    "refresh_token-tips": "提供刷新令牌或访问令牌（至少 16 个字符）"
   },
   "YandexDisk": {
     "api_url_address": "API 地址",
@@ -1797,6 +1819,31 @@
     "WeiYun": "腾讯微云",
     "WoPan": "联通云盘",
     "YandexDisk": "Yandex 网盘",
-    "cloudflare_imgbed": "CloudFlare-ImgBed"
+    "cloudflare_imgbed": "CloudFlare-ImgBed",
+    "CtFile": "城通网盘"
+  },
+  "CtFile": {
+    "base_url": "API 基础地址",
+    "base_url-tips": "API 基础 URL",
+    "cloud_type": "云盘类型",
+    "cloud_types": {
+      "private": "私有",
+      "public": "公开"
+    },
+    "order_by": "排序依据",
+    "order_bys": {
+      "name": "名称",
+      "size": "大小",
+      "time": "时间"
+    },
+    "order_direction": "排序方向",
+    "order_directions": {
+      "asc": "升序",
+      "desc": "降序"
+    },
+    "root_folder_id": "根文件夹 ID",
+    "session": "会话令牌",
+    "session-tips": "在开发者控制台获取的 OpenAPI 会话令牌",
+    "user_agent": "User Agent"
   }
 }

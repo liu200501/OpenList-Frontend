@@ -71,7 +71,7 @@ const PPTViewerApp = () => {
 
       // 等待jQuery加载完成
       if (!window.$ || !window.jQuery) {
-        throw new Error("jQuery not loaded")
+        throw new Error(t("home.preview.jquery_not_loaded"))
       }
 
       // 将CSS注入Shadow DOM
@@ -225,7 +225,7 @@ const PPTViewerApp = () => {
 
         {/* 错误状态 */}
         <Show when={error()}>
-          <Erro msg={t("preview.failed_load_ppt")} h="70vh" />
+          <Erro msg={t("home.preview.failed_load_ppt")} h="70vh" />
         </Show>
       </div>
 
@@ -245,7 +245,7 @@ const PPTViewerApp = () => {
         <IconButton
           size="sm"
           colorScheme="neutral"
-          aria-label="Zoom Out"
+          aria-label={t("home.preview.zoom_out")}
           icon={<HiOutlineMagnifyingGlassMinus />}
           onClick={zoomOut}
         />
@@ -258,13 +258,15 @@ const PPTViewerApp = () => {
           }
         >
           <Button size="sm" colorScheme="neutral" onClick={zoomReset}>
-            {zoom() === null ? "Auto" : `${Math.round((zoom() ?? 1) * 100)}%`}
+            {zoom() === null
+              ? t("home.preview.auto")
+              : `${Math.round((zoom() ?? 1) * 100)}%`}
           </Button>
         </Tooltip>
         <IconButton
           size="sm"
           colorScheme="neutral"
-          aria-label="Zoom In"
+          aria-label={t("home.preview.zoom_in")}
           icon={<HiOutlineMagnifyingGlassPlus />}
           onClick={zoomIn}
         />

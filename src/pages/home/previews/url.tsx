@@ -13,12 +13,12 @@ export default function () {
   const url = createMemo(() => {
     if (content.loading) return ""
     const ini = content()?.content
-    if (!ini) throw new Error("No content")
+    if (!ini) throw new Error(t("home.preview.url_no_content"))
     if (typeof ini === "string") throw new Error(ini)
     const { text } = useParseText(ini)
     const config = recordKeysToLowerCase(parse(text() || ""))
     const shortcutUrl = config.internetshortcut?.url
-    if (!shortcutUrl) throw new Error("Invalid .url file: no URL found")
+    if (!shortcutUrl) throw new Error(t("home.preview.url_invalid"))
     return shortcutUrl
   })
   return (

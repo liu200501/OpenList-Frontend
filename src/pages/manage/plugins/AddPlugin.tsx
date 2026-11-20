@@ -55,7 +55,7 @@ const AddPlugin = () => {
 
   const handleFileChange = async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".zip")) {
-      notify.error("Please select a .zip plugin archive")
+      notify.error(t("plugins.invalid_zip"))
       return
     }
     setZipFile(file)
@@ -66,9 +66,9 @@ const AddPlugin = () => {
       if (extracted.manifest.high_privilege) {
         setHighPrivilege(true)
       }
-      notify.success("ZIP plugin package parsed successfully")
+      notify.success(t("plugins.zip_parsed"))
     } catch (err: any) {
-      notify.error("ZIP parse failed: " + err.message)
+      notify.error(t("plugins.zip_parse_failed", { error: err.message }))
       setZipFile(null)
       setZipParsedManifest(null)
     } finally {
@@ -82,7 +82,7 @@ const AddPlugin = () => {
       if (installMethod() === "zip") {
         const manifest = zipParsedManifest()
         if (!manifest || !manifest.id) {
-          notify.warning("Please upload a valid plugin ZIP file first")
+          notify.warning(t("plugins.zip_required"))
           return
         }
         const resp: Resp<PluginItem> = await r.post("/admin/plugin/install", {
@@ -100,7 +100,7 @@ const AddPlugin = () => {
       } else {
         const url = manifestUrl().trim()
         if (!url) {
-          notify.warning("Please enter the plugin manifest URL")
+          notify.warning(t("plugins.manifest_url_required"))
           return
         }
         const resp: Resp<PluginItem> = await r.post("/admin/plugin/install", {
@@ -282,7 +282,7 @@ const AddPlugin = () => {
                 >
                   <img
                     src={zipParsedManifest()?.icon}
-                    alt="plugin icon"
+                    alt={t("plugins.plugin_icon")}
                     style={{
                       width: "22px",
                       height: "22px",
@@ -304,8 +304,7 @@ const AddPlugin = () => {
                   </Badge>
                 </HStack>
                 <Text fontSize="$xs" color="$neutral10" noOfLines={1}>
-                  {zipParsedManifest()?.description ||
-                    "ZIP plugin package parsed successfully"}
+                  {zipParsedManifest()?.description || t("plugins.zip_parsed")}
                 </Text>
               </VStack>
             </HStack>
@@ -331,7 +330,7 @@ const AddPlugin = () => {
             onChange={(e: any) => setHighPrivilege(e.target.checked)}
           />
           <Show when={highPrivilege()}>
-            <Badge colorScheme="danger">Root Access</Badge>
+            <Badge colorScheme="danger">{t("plugins.root_access")}</Badge>
           </Show>
         </HStack>
         <FormHelperText color="$neutral10" fontSize="$xs" mt="$0_5">

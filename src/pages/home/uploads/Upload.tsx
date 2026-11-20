@@ -27,7 +27,7 @@ import { UploadFileProps, StatusBadge } from "./types"
 import { File2Upload, traverseFileTree } from "./util"
 import { SelectWrapper } from "~/components"
 import { getUploads } from "./uploads"
-import { formatETA } from "./speed"
+import { formatETA, formatSpeedMBps } from "./speed"
 
 const UploadFile = (props: UploadFileProps & { onRetry?: () => void }) => {
   const t = useT()
@@ -60,7 +60,7 @@ const UploadFile = (props: UploadFileProps & { onRetry?: () => void }) => {
           </Badge>
           <Show when={active() && props.speed > 0}>
             <Text fontSize="$sm" color="$neutral11">
-              {getFileSize(props.speed)}/s
+              {formatSpeedMBps(props.speed)}
             </Text>
           </Show>
           <Show when={etaText()}>
@@ -114,6 +114,14 @@ const Upload = () => {
       ["success", "error"].includes(status),
     )
   }
+  // 总速度 = 所有正在上传（含后端处理中）任务的当前速度之和。
+  const totalSpeed = () =>
+    uploadFiles.uploads
+      .filter(
+        ({ status, speed }) =>
+          ["uploading", "backending"].includes(status) && speed > 0,
+      )
+      .reduce((sum, upload) => sum + upload.speed, 0)
   let fileInput!: HTMLInputElement
   let folderInput!: HTMLInputElement
   // keep the File handles around so a failed row can be retried in place
@@ -192,7 +200,7 @@ const Upload = () => {
         when={!uploading()}
         fallback={
           <>
-            <HStack spacing="$2">
+            <HStack spacing="$2" wrap="wrap" w="$full">
               <Button
                 colorScheme="accent"
                 onClick={() => {
@@ -206,6 +214,11 @@ const Upload = () => {
               >
                 {t("home.upload.clear_done")}
               </Button>
+              <Show when={totalSpeed() > 0}>
+                <Text fontSize="$sm" color="$neutral11" fontWeight="$medium">
+                  {t("home.upload.total_speed")} {formatSpeedMBps(totalSpeed())}
+                </Text>
+              </Show>
               <Show when={allDone()}>
                 <Button
                   onClick={() => {
@@ -309,7 +322,7 @@ const Upload = () => {
                 }}
                 options={uploaders.map((uploader) => {
                   return {
-                    label: uploader.name,
+                    label: t(uploader.labelKey),
                     value: uploader.name,
                   }
                 })}

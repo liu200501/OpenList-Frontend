@@ -49,8 +49,8 @@ const ZOOM_MIN = 0.1
 const ZOOM_MAX = 10
 const ZOOM_WHEEL_FACTOR = 1.08
 const ZOOM_BTN_STEP = 0.25
-const DEFAULT_PRELOAD_COUNT = 2
-const MAX_PRELOAD_COUNT = 100
+const DEFAULT_PRELOAD_COUNT = 10
+const MAX_PRELOAD_COUNT = 200
 
 /** Number of images to preload on each side of the current one. */
 const getPreloadCount = () =>
@@ -87,18 +87,18 @@ const HeifView = (props: {
       }
       if (!libheif) {
         const wasm = await fetch(`${libHeifPath()}/libheif.wasm`).then((r) => {
-          if (!r.ok) throw "WASM load failed"
+          if (!r.ok) throw t("home.preview.failed_decode_wasm")
           return r.arrayBuffer()
         })
         libheif = window.libheif({ wasmBinary: wasm })
         decoder = new libheif.HeifDecoder()
       }
       const buffer = await fetch(url).then((r) => {
-        if (!r.ok) throw "File fetch failed"
+        if (!r.ok) throw t("home.preview.failed_fetch_file")
         return r.arrayBuffer()
       })
       const images = decoder.decode(buffer)
-      if (!images?.length) throw "No decodable image"
+      if (!images?.length) throw t("home.preview.no_decodable_image")
       const img = images[0]
       const w = img.get_width()
       const h = img.get_height()
@@ -182,6 +182,8 @@ const Preview = (props: PreviewProps) => {
   const curIdx = () => images.findIndex((f) => f.name === objStore.obj.name)
 
   // ── 预加载：把前后若干张图缓存到浏览器，并按 url 复用已缓存的 Image ──
+  // 缓存上限按预加载窗口的倍数保留，来回翻页时不必重新下载。
+  const PRELOAD_CACHE_FACTOR = 4
   const preloadCache = new Map<string, HTMLImageElement>()
   const preloadAround = () => {
     const i = curIdx()
@@ -210,10 +212,19 @@ const Preview = (props: PreviewProps) => {
       }
     }
 
-    // 丢弃不在当前预加载窗口内的旧缓存，避免无限增长
-    for (const url of preloadCache.keys()) {
-      if (!needed.has(url)) {
-        preloadCache.delete(url)
+    // 只在缓存明显超过窗口时才淘汰最旧的条目：
+    // 保留一定余量，来回翻页可以直接命中，也不会无限增长。
+    const maxCache = Math.max(
+      preloadCount * 2 + 1,
+      preloadCount * PRELOAD_CACHE_FACTOR,
+    )
+    if (preloadCache.size > maxCache) {
+      const stale = Array.from(preloadCache.keys()).filter(
+        (url) => !needed.has(url),
+      )
+      const toRemove = preloadCache.size - maxCache
+      for (let i = 0; i < toRemove && i < stale.length; i++) {
+        preloadCache.delete(stale[i])
       }
     }
   }
@@ -428,10 +439,10 @@ const Preview = (props: PreviewProps) => {
           >
             <HStack spacing="$1">
               <Show when={curIdx() > 0}>
-                <Tooltip label="Previous (←)">
+                <Tooltip label={`${t("home.preview.previous")} (←)`}>
                   <IconButton
                     icon={<FaSolidAngleLeft />}
-                    aria-label="Previous"
+                    aria-label={t("home.preview.previous")}
                     variant="ghost"
                     size="sm"
                     onClick={prev}
@@ -439,10 +450,10 @@ const Preview = (props: PreviewProps) => {
                 </Tooltip>
               </Show>
               <Show when={curIdx() < images.length - 1}>
-                <Tooltip label="Next (→)">
+                <Tooltip label={`${t("home.preview.next")} (→)`}>
                   <IconButton
                     icon={<FaSolidAngleRight />}
-                    aria-label="Next"
+                    aria-label={t("home.preview.next")}
                     variant="ghost"
                     size="sm"
                     onClick={next}
@@ -470,74 +481,74 @@ const Preview = (props: PreviewProps) => {
             </HStack>
             <Spacer />
             <HStack spacing="$1">
-              <Tooltip label="Info (I)">
+              <Tooltip label={`${t("home.preview.info")} (I)`}>
                 <IconButton
                   icon={<BsInfoCircle />}
-                  aria-label="Info"
+                  aria-label={t("home.preview.info")}
                   variant={showInfo() ? "subtle" : "ghost"}
                   size="sm"
                   onClick={() => setShowInfo((v) => !v)}
                 />
               </Tooltip>
 
-              <Tooltip label="Zoom out (−)">
+              <Tooltip label={`${t("home.preview.zoom_out")} (−)`}>
                 <IconButton
                   icon={<BsZoomOut />}
-                  aria-label="Zoom out"
+                  aria-label={t("home.preview.zoom_out")}
                   variant="ghost"
                   size="sm"
                   onClick={zoomOut}
                 />
               </Tooltip>
-              <Tooltip label="Zoom in (+)">
+              <Tooltip label={`${t("home.preview.zoom_in")} (+)`}>
                 <IconButton
                   icon={<BsZoomIn />}
-                  aria-label="Zoom in"
+                  aria-label={t("home.preview.zoom_in")}
                   variant="ghost"
                   size="sm"
                   onClick={zoomIn}
                 />
               </Tooltip>
-              <Tooltip label="Fit page (C)">
+              <Tooltip label={`${t("home.preview.fit_page")} (C)`}>
                 <IconButton
                   icon={<TbArrowAutofitContent />}
-                  aria-label="Fit page"
+                  aria-label={t("home.preview.fit_page")}
                   variant="ghost"
                   size="sm"
                   onClick={fitPage}
                 />
               </Tooltip>
-              <Tooltip label="Fit height (H)">
+              <Tooltip label={`${t("home.preview.fit_height")} (H)`}>
                 <IconButton
                   icon={<TbArrowAutofitHeight />}
-                  aria-label="Fit height"
+                  aria-label={t("home.preview.fit_height")}
                   variant="ghost"
                   size="sm"
                   onClick={fitHeight}
                 />
               </Tooltip>
-              <Tooltip label="Fit width (W)">
+              <Tooltip label={`${t("home.preview.fit_width")} (W)`}>
                 <IconButton
                   icon={<TbArrowAutofitWidth />}
-                  aria-label="Fit width"
+                  aria-label={t("home.preview.fit_width")}
                   variant="ghost"
                   size="sm"
                   onClick={fitWidth}
                 />
               </Tooltip>
-              <Tooltip label="Rotate left (R)">
+              <Tooltip label={`${t("home.preview.rotate_left")} (R)`}>
                 <IconButton
                   icon={<BsArrowCounterclockwise />}
-                  aria-label="Rotate left"
+                  aria-label={t("home.preview.rotate_left")}
                   variant="ghost"
                   size="sm"
                   onClick={rotL}
                 />
               </Tooltip>
-              <Tooltip label="Rotate right (Shift+R)">
+              <Tooltip label={`${t("home.preview.rotate_right")} (Shift+R)`}>
                 <IconButton
                   icon={<BsArrowClockwise />}
-                  aria-label="Rotate right"
+                  aria-label={t("home.preview.rotate_right")}
                   variant="ghost"
                   size="sm"
                   onClick={rotR}

@@ -44,14 +44,14 @@ const DocViewerApp = () => {
 
       // 等待docx库加载完成
       if (!window.docx) {
-        throw new Error("docx-preview library not loaded")
+        throw new Error(t("home.preview.docx_lib_not_loaded"))
       }
 
       // 获取文件URL并下载
       const fileUrl = currentObjLink()
       const response = await fetch(fileUrl)
       if (!response.ok) {
-        throw new Error("Failed to fetch document file")
+        throw new Error(t("home.preview.failed_fetch_file"))
       }
 
       const blob = await response.blob()
@@ -159,7 +159,7 @@ const DocViewerApp = () => {
         <IconButton
           size="sm"
           colorScheme="neutral"
-          aria-label="Zoom Out"
+          aria-label={t("home.preview.zoom_out")}
           icon={<HiOutlineMagnifyingGlassMinus />}
           onClick={zoomOut}
         />
@@ -172,13 +172,15 @@ const DocViewerApp = () => {
           }
         >
           <Button size="sm" colorScheme="neutral" onClick={zoomReset}>
-            {zoom() === null ? "Auto" : `${Math.round((zoom() ?? 1) * 100)}%`}
+            {zoom() === null
+              ? t("home.preview.auto")
+              : `${Math.round((zoom() ?? 1) * 100)}%`}
           </Button>
         </Tooltip>
         <IconButton
           size="sm"
           colorScheme="neutral"
-          aria-label="Zoom In"
+          aria-label={t("home.preview.zoom_in")}
           icon={<HiOutlineMagnifyingGlassPlus />}
           onClick={zoomIn}
         />
@@ -212,7 +214,7 @@ const DocViewerApp = () => {
 
         {/* 错误状态 */}
         <Show when={error()}>
-          <Erro msg={t("preview.failed_load_doc")} h="70vh" />
+          <Erro msg={t("home.preview.failed_load_doc")} h="70vh" />
         </Show>
       </div>
     </BoxWithFullScreen>

@@ -65,5 +65,19 @@
     "paste_json": "Paste plugins JSON data here",
     "import_success": "Plugins imported successfully"
   },
-  "empty_installed": "No plugins installed yet. Click 'Install Plugin' to upload a ZIP package or install from URL."
+  "empty_installed": "No plugins installed yet. Click 'Install Plugin' to upload a ZIP package or install from URL.",
+  "root_access": "Root Access",
+  "community": "Community",
+  "invalid_zip": "Please select a .zip plugin archive",
+  "zip_parsed": "ZIP plugin package parsed successfully",
+  "zip_parse_failed": "ZIP parse failed: {{error}}",
+  "zip_required": "Please upload a valid plugin ZIP file first",
+  "manifest_url_required": "Please enter the plugin manifest URL",
+  "plugin_not_found": "Plugin not found: {{id}}",
+  "invalid_plugins_json": "Invalid JSON: must be an array of plugins",
+  "json_parse_failed": "JSON parse failed: {{error}}",
+  "plugin_icon": "Plugin icon",
+  "zip_invalid_eocd": "Invalid ZIP file: End of Central Directory signature not found",
+  "zip_decompress_unsupported": "Streaming decompression (DecompressionStream) is not supported in this browser",
+  "zip_module_load_failed": "Failed to load the ZIP extraction module"
 }

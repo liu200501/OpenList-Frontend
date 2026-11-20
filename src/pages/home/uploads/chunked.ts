@@ -1,5 +1,6 @@
 import { password } from "~/store"
 import { r, pathDir } from "~/utils"
+import { useT } from "~/hooks"
 import { Resp } from "~/types"
 import { SetUpload, Upload } from "./types"
 import { calculateHash } from "./util"
@@ -126,7 +127,9 @@ export const ChunkedUpload: Upload = async (
     })) as unknown as Resp<any>
     if (partResp.code !== 200) {
       throw new Error(
-        `[Part ${i}/${totalParts}] ${partResp.message || "upload failed"}`,
+        `[Part ${i}/${totalParts}] ${
+          partResp.message || useT()("home.upload.upload_failed")
+        }`,
       )
     }
     if (partResp.data?.partMd5) partMd5s[i - 1] = partResp.data.partMd5

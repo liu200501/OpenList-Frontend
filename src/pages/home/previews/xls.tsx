@@ -52,7 +52,7 @@ const ExcelViewerApp = () => {
       // 下载文件
       const response = await fetch(fileUrl)
       if (!response.ok) {
-        throw new Error("Failed to fetch Excel file")
+        throw new Error(t("home.preview.failed_fetch_file"))
       }
 
       const arrayBuffer = await response.arrayBuffer()
@@ -229,7 +229,7 @@ const ExcelViewerApp = () => {
 
           {/* 错误状态 */}
           <Show when={error()}>
-            <Erro msg={t("preview.failed_load_excel")} h="70vh" />
+            <Erro msg={t("home.preview.failed_load_xls")} h="70vh" />
           </Show>
         </div>
       </Box>
