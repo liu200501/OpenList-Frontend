@@ -3,7 +3,7 @@ import { Motion } from "solid-motionone"
 import { useContextMenu } from "solid-contextmenu"
 import { batch, Show } from "solid-js"
 import { CenterLoading, LinkWithPush, ImageWithError } from "~/components"
-import { usePath, useRouter, useUtil } from "~/hooks"
+import { usePath, useRouter, useUtil, useT } from "~/hooks"
 import { checkboxOpen, getMainColor, local, selectIndex } from "~/store"
 import { FaRegularStar, FaSolidStar } from "solid-icons/fa"
 import { isObjFavorite, toggleObjFavorite } from "./collect"
@@ -14,6 +14,7 @@ import { CipherCopyButton } from "./CipherCopyButton"
 import { ItemCheckbox, useSelectWithMouse } from "./helper"
 
 export const GridItem = (props: { obj: StoreObj; index: number }) => {
+  const t = useT()
   const { isHide } = useUtil()
   if (isHide(props.obj)) {
     return null
@@ -31,6 +32,14 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
   const { openWithDoubleClick, toggleWithClick, restoreSelectionCache } =
     useSelectWithMouse()
   const favorited = () => isObjFavorite(pathname(), props.obj)
+  // 压缩包固定走预览页（而不是被"下载优先"等设置带去下载页），
+  // 这样进入后 archive 预览能直接把纯图片包无缝打开成图片。
+  const itemHref = () => {
+    const href = pushHref(props.obj.name)
+    return props.obj.type === ObjType.ARCHIVE
+      ? `${href}${href.includes("?") ? "&" : "?"}preview=archive`
+      : href
+  }
   return (
     <Motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -62,7 +71,7 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
         on:dblclick={() => {
           if (!openWithDoubleClick()) return
           selectIndex(props.index, true, true)
-          to(pushHref(props.obj.name))
+          to(itemHref())
         }}
         on:click={(e: MouseEvent) => {
           e.preventDefault()
@@ -71,7 +80,7 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
           if (!restoreSelectionCache()) return
           if (toggleWithClick())
             return selectIndex(props.index, !props.obj.selected)
-          to(pushHref(props.obj.name))
+          to(itemHref())
         }}
         onMouseEnter={() => {
           setPathAs(props.obj.name, props.obj.is_dir, true)
@@ -132,7 +141,11 @@ export const GridItem = (props: { obj: StoreObj; index: number }) => {
             zIndex="$10"
             cursor="pointer"
             opacity={favorited() ? 1 : 0.75}
-            title={favorited() ? "取消收藏" : "收藏"}
+            title={
+              favorited()
+                ? t("home.toolbar.uncollect")
+                : t("home.toolbar.collect")
+            }
             on:mousedown={(e: MouseEvent) => {
               e.stopPropagation()
             }}

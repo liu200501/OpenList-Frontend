@@ -30,7 +30,7 @@ export const Layout = () => {
         _hover={{
           bgColor: changeColor(getMainColor(), { alpha: 0.2 }),
         }}
-        aria-label="switch layout"
+        aria-label={t("home.layouts.switch")}
         compact
         size="lg"
         icon={

@@ -144,7 +144,9 @@ const Preview = () => {
     floatingPlayer.toggle()
     applyFloatUI(floatingPlayer.enabled)
     notify.info(
-      floatingPlayer.enabled ? "已切换到浮窗（可拖动/缩放）" : "已还原播放器",
+      floatingPlayer.enabled
+        ? t("home.preview.float_on")
+        : t("home.preview.float_off"),
     )
   }
 
@@ -184,7 +186,9 @@ const Preview = () => {
     loopEnabled = !loopEnabled
     applyLoopState()
     localStorage.setItem(LOOP_KEY, String(loopEnabled))
-    notify.info(loopEnabled ? "循环播放已开启" : "循环播放已关闭")
+    notify.info(
+      loopEnabled ? t("home.preview.loop_on") : t("home.preview.loop_off"),
+    )
   }
   // 提前回绕：仅在播放中、未 seek、且接近结尾时触发一次
   const tryRewindForLoop = () => {
@@ -225,8 +229,8 @@ const Preview = () => {
   const wheelSwitchLabelEl = document.createElement("span")
   const renderWheelSwitchLabel = () => {
     wheelSwitchLabelEl.textContent = wheelSwitchEnabled
-      ? "滚轮切集：开"
-      : "滚轮切集：关"
+      ? t("home.preview.wheel_switch_on")
+      : t("home.preview.wheel_switch_off")
   }
   renderWheelSwitchLabel()
   const setWheelSwitch = (on: boolean) => {
@@ -238,7 +242,11 @@ const Preview = () => {
     }
     localStorage.setItem(WHEEL_SWITCH_KEY, String(on))
     renderWheelSwitchLabel()
-    notify.info(on ? "滚轮切集已开启" : "滚轮切集已关闭")
+    notify.info(
+      on
+        ? t("home.preview.wheel_switch_enabled")
+        : t("home.preview.wheel_switch_disabled"),
+    )
   }
 
   // ── 总是静音启动开关 ──
@@ -248,8 +256,8 @@ const Preview = () => {
   const muteSwitchLabelEl = document.createElement("span")
   const renderMuteSwitchLabel = () => {
     muteSwitchLabelEl.textContent = muteOnStartEnabled
-      ? "静音启动：开"
-      : "静音启动：关"
+      ? t("home.preview.mute_start_on")
+      : t("home.preview.mute_start_off")
   }
   renderMuteSwitchLabel()
   const setMuteOnStart = (on: boolean) => {
@@ -258,7 +266,11 @@ const Preview = () => {
     renderMuteSwitchLabel()
     // 立即把当前播放器同步到目标状态，避免开关后无反馈
     if (player?.video) player.muted = on
-    notify.info(on ? "已开启静音启动" : "已关闭静音启动")
+    notify.info(
+      on
+        ? t("home.preview.mute_start_enabled")
+        : t("home.preview.mute_start_disabled"),
+    )
   }
 
   // ── 全屏选集面板 ──
@@ -290,7 +302,9 @@ const Preview = () => {
 
     const header = document.createElement("div")
     header.className = "art-episode-panel__header"
-    header.textContent = `选集（共 ${list.length} 集）`
+    header.textContent = t("home.preview.episodes_header", {
+      total: list.length,
+    })
     const closeBtn = document.createElement("button")
     closeBtn.className = "art-episode-panel__close"
     closeBtn.innerHTML =
@@ -408,7 +422,7 @@ const Preview = () => {
         index: 10,
         position: "left",
         html: '<svg fill="none" stroke-width="2" xmlns="http://www.w3.org/2000/svg" height="22" width="22" class="icon icon-tabler icon-tabler-player-track-prev-filled" width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="overflow: visible; color: currentcolor;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M20.341 4.247l-8 7a1 1 0 0 0 0 1.506l8 7c.647 .565 1.659 .106 1.659 -.753v-14c0 -.86 -1.012 -1.318 -1.659 -.753z" stroke-width="0" fill="currentColor"></path><path d="M9.341 4.247l-8 7a1 1 0 0 0 0 1.506l8 7c.647 .565 1.659 .106 1.659 -.753v-14c0 -.86 -1.012 -1.318 -1.659 -.753z" stroke-width="0" fill="currentColor"></path></svg>',
-        tooltip: "Previous",
+        tooltip: t("home.preview.previous"),
         click: function () {
           previous_video()
         },
@@ -418,7 +432,7 @@ const Preview = () => {
         index: 11,
         position: "left",
         html: '<svg fill="none" stroke-width="2" xmlns="http://www.w3.org/2000/svg" height="22" width="22" class="icon icon-tabler icon-tabler-player-track-next-filled" width="1em" height="1em" viewBox="0 0 24 24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="overflow: visible; color: currentcolor;"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M2 5v14c0 .86 1.012 1.318 1.659 .753l8 -7a1 1 0 0 0 0 -1.506l-8 -7c-.647 -.565 -1.659 -.106 -1.659 .753z" stroke-width="0" fill="currentColor"></path><path d="M13 5v14c0 .86 1.012 1.318 1.659 .753l8 -7a1 1 0 0 0 0 -1.506l-8 -7c-.647 -.565 -1.659 -.106 -1.659 .753z" stroke-width="0" fill="currentColor"></path></svg>',
-        tooltip: "Next",
+        tooltip: t("home.preview.next"),
         click: function () {
           next_video()
         },
@@ -438,7 +452,7 @@ const Preview = () => {
         index: 12,
         position: "right",
         html: '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M4 12v-3a3 3 0 0 1 3 -3h11"></path><polyline points="14 3 17 6 14 9"></polyline><path d="M20 12v3a3 3 0 0 1 -3 3h-11"></path><polyline points="10 21 7 18 10 15"></polyline></svg>',
-        tooltip: "Loop: Off",
+        tooltip: t("home.preview.loop"),
         click: function () {
           toggleLoop()
         },
@@ -448,7 +462,7 @@ const Preview = () => {
         index: 9,
         position: "right",
         html: EPISODE_LIST_ICON,
-        tooltip: "选集",
+        tooltip: t("home.preview.episodes"),
         click: function () {
           openEpisodePanel()
         },
@@ -458,7 +472,7 @@ const Preview = () => {
         index: 14,
         position: "right",
         html: FLOAT_OFF_ICON,
-        tooltip: "Float Window",
+        tooltip: t("home.preview.float_window"),
         click: function () {
           toggleFloat()
         },
@@ -468,7 +482,7 @@ const Preview = () => {
         index: 13,
         position: "right",
         html: '<svg xmlns="http://www.w3.org/2000/svg" height="22" width="22" viewBox="0 0 50 50"><path d="M 19.402344 6 C 17.019531 6 14.96875 7.679688 14.5 10.011719 L 14.097656 12 L 9 12 C 6.238281 12 4 14.238281 4 17 L 4 38 C 4 40.761719 6.238281 43 9 43 L 41 43 C 43.761719 43 46 40.761719 46 38 L 46 17 C 46 14.238281 43.761719 12 41 12 L 35.902344 12 L 35.5 10.011719 C 35.03125 7.679688 32.980469 6 30.597656 6 Z M 25 17 C 30.519531 17 35 21.480469 35 27 C 35 32.519531 30.519531 37 25 37 C 19.480469 37 15 32.519531 15 27 C 15 21.480469 19.480469 17 25 17 Z M 25 19 C 20.589844 19 17 22.589844 17 27 C 17 31.410156 20.589844 35 25 35 C 29.410156 35 33 31.410156 33 27 C 33 22.589844 29.410156 19 25 19 Z"></path></svg>',
-        tooltip: "Screenshot",
+        tooltip: t("home.preview.screenshot"),
         click: function () {
           doScreenshot()
         },
@@ -588,11 +602,13 @@ const Preview = () => {
     const innerMenu: Setting[] = [
       {
         id: "setting_subtitle_display",
-        html: "Display",
-        tooltip: "Show",
+        html: t("home.preview.subtitle_display"),
+        tooltip: t("home.preview.show"),
         switch: true,
         onSwitch: function (item: Setting) {
-          item.tooltip = item.switch ? "Hide" : "Show"
+          item.tooltip = item.switch
+            ? t("home.preview.hide")
+            : t("home.preview.show")
           setSubtitleVisible(!item.switch)
 
           const menu_sub = option.settings?.find(
@@ -632,8 +648,8 @@ const Preview = () => {
 
     option.settings?.push({
       id: "setting_subtitle",
-      html: "Subtitle",
-      tooltip: "Show",
+      html: t("home.preview.subtitle"),
+      tooltip: t("home.preview.show"),
       icon: ArtPlayerIconsSubtitle({ size: 24 }) as HTMLElement,
       selector: innerMenu,
       onSelect: function (item: Setting) {

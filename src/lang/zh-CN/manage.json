@@ -39,5 +39,7 @@
   "add_storage-tips": "您可能需要在新打开的标签页中填写一些信息。",
   "messenger-tips": "您可能需要按提示在此标签页中填写一些信息。",
   "load_default_setting": "加载默认设置",
-  "load_default_setting_success": "加载成功，尚未保存"
+  "load_default_setting_success": "加载成功，尚未保存",
+  "menu": "菜单",
+  "logout": "退出登录"
 }

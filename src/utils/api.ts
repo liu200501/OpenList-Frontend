@@ -168,6 +168,15 @@ export const removeFavorite = (
   return r.post("/admin/storage/collect/remove", { path, mount_path })
 }
 
+/**
+ * 获取二级收藏夹列表：来自 /收藏 的 fine_favorites 配置，按配置顺序排列。
+ */
+export const listFineFavoriteFolders = (): PResp<
+  { name: string; mount_path: string }[]
+> => {
+  return r.get("/admin/storage/collect/folders")
+}
+
 export const fsNewFile = (
   path: string,
   password: string,

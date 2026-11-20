@@ -91,7 +91,7 @@ const Item = (props: ItemProps) => {
             <Show when={props.type === Type.String && props.random}>
               <IconButton
                 colorScheme="neutral"
-                aria-label="random"
+                aria-label={t("home.toolbar.random")}
                 icon={<TbRefresh />}
                 onClick={
                   props.type === Type.String

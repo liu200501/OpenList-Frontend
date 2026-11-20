@@ -20,7 +20,13 @@ import { getPreviews } from "../previews"
 import { BsPlayCircleFill } from "solid-icons/bs"
 import { FaRegularStar, FaSolidStar } from "solid-icons/fa"
 import { isArchive } from "~/store/archive"
-import { isObjFavorite, toggleObjFavorite } from "./collect"
+import { favoriteFolders, isPathInFolder } from "~/store"
+import {
+  collectToFolder,
+  favoritePath,
+  isObjFavorite,
+  toggleObjFavorite,
+} from "./collect"
 import axios from "axios"
 
 const ItemContent = (props: { name: string }) => {
@@ -34,25 +40,6 @@ const ItemContent = (props: { name: string }) => {
         color={operations[props.name].color}
       />
       <Text>{t(`home.toolbar.${props.name}`)}</Text>
-    </HStack>
-  )
-}
-
-// 收藏菜单项：未收藏显示灰色空心星，已收藏显示亮色实心星，文案随状态切换。
-const CollectItemContent = (props: { favorited: boolean }) => {
-  const t = useT()
-  return (
-    <HStack spacing="$2">
-      <Icon
-        as={props.favorited ? FaSolidStar : FaRegularStar}
-        boxSize="$7"
-        color={props.favorited ? operations.collect.color : "$neutral8"}
-      />
-      <Text>
-        {props.favorited
-          ? t("home.toolbar.collect") + " (✓)"
-          : t("home.toolbar.collect")}
-      </Text>
     </HStack>
   )
 }
@@ -75,7 +62,7 @@ export const ContextMenu = () => {
     const dir = pathname()
     return objs.every((obj) => isObjFavorite(dir, obj))
   }
-  // 切换收藏状态：全部已收藏则取消全部，否则把未收藏的加入收藏。
+  // 单击"收藏"：直接收藏/取消到默认根目录 /收藏。
   const toggleCollect = async () => {
     const objs = selectedObjs()
     if (objs.length === 0) return
@@ -84,19 +71,12 @@ export const ContextMenu = () => {
     let okCount = 0
     for (const obj of objs) {
       const favorited = isObjFavorite(dir, obj)
-      // 取消收藏时只处理已收藏的；加入收藏时只处理未收藏的。
-      // favorited 与目标方向不一致的项才需要处理。
+      // 取消时只处理已收藏的，加入时只处理未收藏的。
       if (unfavorite !== favorited) continue
       const now = await toggleObjFavorite(dir, obj)
-      if (now !== favorited) {
-        okCount++
-      } else {
-        notify.error(t("home.toolbar.collect") + " failed")
-      }
+      if (now !== favorited) okCount++
     }
-    if (okCount > 0) {
-      notify.success(`${t("home.toolbar.collect")} (${okCount})`)
-    }
+    if (okCount > 0) notify.success(`${t("home.toolbar.collect")} (${okCount})`)
   }
   const openWithPreviews = createMemo(() => {
     const objs = selectedObjs()
@@ -148,9 +128,69 @@ export const ContextMenu = () => {
       >
         <ItemContent name="share" />
       </Item>
-      <Item hidden={isShare() || !objStore.write} onClick={toggleCollect}>
-        <CollectItemContent favorited={selectedAllFavorited()} />
-      </Item>
+      {/* 收藏到...：单击 label 放进收藏根目录 /收藏；hover 展开后点二级夹放进对应夹 */}
+      <Submenu
+        hidden={isShare() || !objStore.write}
+        label={
+          <HStack
+            spacing="$2"
+            onClick={(e) => {
+              // 阻止冒泡到 Submenu，避免点击 label 触发菜单开合；submenu 靠 hover 展开。
+              e.stopPropagation()
+              toggleCollect()
+            }}
+          >
+            <Icon
+              as={selectedAllFavorited() ? FaSolidStar : FaRegularStar}
+              boxSize="$7"
+              color={
+                selectedAllFavorited() ? operations.collect.color : "$neutral8"
+              }
+            />
+            <Text>{t("home.toolbar.collect_to")}</Text>
+          </HStack>
+        }
+      >
+        <For each={favoriteFolders()}>
+          {(folder) => {
+            const favorited = () =>
+              selectedObjs().length > 0 &&
+              selectedObjs().every((obj) =>
+                isPathInFolder(folder.mountPath, favoritePath(pathname(), obj)),
+              )
+            return (
+              <Item
+                onClick={async () => {
+                  const objs = selectedObjs()
+                  if (objs.length === 0) return
+                  const remove = favorited()
+                  let okCount = 0
+                  for (const obj of objs) {
+                    const now = await collectToFolder(
+                      pathname(),
+                      obj,
+                      folder.mountPath,
+                    )
+                    if (now !== remove) okCount++
+                  }
+                  if (okCount > 0) {
+                    notify.success(`${folder.name} (${okCount})`)
+                  }
+                }}
+              >
+                <HStack spacing="$2">
+                  <Icon
+                    as={favorited() ? FaSolidStar : FaRegularStar}
+                    boxSize="$5"
+                    color={favorited() ? operations.collect.color : "$neutral8"}
+                  />
+                  <Text>{folder.name}</Text>
+                </HStack>
+              </Item>
+            )
+          }}
+        </For>
+      </Submenu>
       <Item
         hidden={() => {
           return (
@@ -203,10 +243,16 @@ export const ContextMenu = () => {
                 info: parseResp.data,
               })
             } else {
-              notify.error(parseResp.message || "解析 torrent 失败")
+              notify.error(
+                parseResp.message || t("home.toolbar.parse_torrent_failed"),
+              )
             }
           } catch (err) {
-            notify.error(`解析 torrent 失败: ${err}`)
+            notify.error(
+              t("home.toolbar.parse_torrent_failed_reason", {
+                error: String(err),
+              }),
+            )
           }
         }}
       >

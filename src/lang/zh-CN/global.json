@@ -39,5 +39,12 @@
   "invalid_filename_chars": "文件名不能包含：/ \\ ? < > * : | \"",
   "invalid_regex": "无效的正则表达式",
   "name": "名称",
-  "go_to_storages": "前往存储"
+  "go_to_storages": "前往存储",
+  "success": "成功",
+  "previous": "上一页",
+  "next": "下一页",
+  "menu": "菜单",
+  "logout": "退出登录",
+  "katex_css_load_failed": "KaTeX 样式加载失败，数学公式将无法渲染",
+  "mermaid_js_load_failed": "Mermaid 脚本加载失败，图表将无法渲染"
 }

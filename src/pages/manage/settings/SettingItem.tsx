@@ -22,6 +22,7 @@ import { For, Match, Show, Switch } from "solid-js"
 import { useT } from "~/hooks"
 import { Flag, SettingItem, Type } from "~/types"
 import { TiDelete } from "solid-icons/ti"
+import { IndexWatchRules } from "./IndexWatchRules"
 
 export type ItemProps = SettingItem & {
   onChange?: (value: string) => void
@@ -53,6 +54,13 @@ const Item = (props: ItemProps) => {
         </FormLabel>
       </Show>
       <Switch fallback={<Center>{t("settings_other.unknown_type")}</Center>}>
+        <Match when={props.key === "index_watch_rules"}>
+          <IndexWatchRules
+            value={props.value}
+            onChange={(v) => props.onChange?.(v)}
+            readOnly={props.flag === Flag.READONLY}
+          />
+        </Match>
         <Match when={[Type.String, Type.Number].includes(props.type)}>
           <Input
             type={props.type === Type.Number ? "number" : ""}
@@ -110,7 +118,9 @@ const Item = (props: ItemProps) => {
         </Match>
       </Switch>
       <FormHelperText>
-        {props.help ? t(`settings.${props.key}-tips`) : ""}
+        {props.help && props.key !== "index_watch_rules"
+          ? t(`settings.${props.key}-tips`)
+          : ""}
       </FormHelperText>
     </FormControl>
   )

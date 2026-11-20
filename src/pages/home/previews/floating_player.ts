@@ -1,4 +1,7 @@
 import type Artplayer from "artplayer"
+import { useT } from "~/hooks"
+
+const t = useT()
 
 /**
  * 可自由调整尺寸的“画中画”浮窗。
@@ -178,7 +181,7 @@ export class FloatingPlayer {
     handleBar.style.fontSize = "11px"
     handleBar.style.opacity = "0"
     handleBar.style.transition = "opacity 0.2s"
-    handleBar.title = "Drag to move"
+    handleBar.title = t("home.preview.drag_to_move")
 
     const dragHint = document.createElement("span")
     dragHint.textContent = "⋮⋮"
@@ -187,7 +190,7 @@ export class FloatingPlayer {
 
     const closeBtn = document.createElement("button")
     closeBtn.textContent = "✕"
-    closeBtn.title = "Close float window"
+    closeBtn.title = t("home.preview.close_float_window")
     closeBtn.style.border = "none"
     closeBtn.style.background = "transparent"
     closeBtn.style.color = "#fff"

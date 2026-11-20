@@ -39,5 +39,6 @@
   "input_password": "Please enter Share Code",
   "share_gone": "This share has expired or been cancelled",
   "copy_msg": "Copy link",
-  "no_permission_tip": "To create a share, you need \"Share\" permission."
+  "no_permission_tip": "To create a share, you need \"Share\" permission.",
+  "expires_placeholder": "yyyy-MM-dd HH:mm:ss or +1w1d1H1m1s1ms"
 }

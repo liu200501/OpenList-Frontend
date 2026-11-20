@@ -86,7 +86,7 @@ function LocalSettingEdit(props: LocalSetting) {
         <Match when={props.type === "number"}>
           <ButtonGroup attached>
             <IconButton
-              aria-label="decrease"
+              aria-label={t("global.decrease")}
               icon={<FaSolidMinus />}
               onClick={() => {
                 setLocal(
@@ -111,7 +111,7 @@ function LocalSettingEdit(props: LocalSetting) {
               class="hide-spin"
             />
             <IconButton
-              aria-label="increase"
+              aria-label={t("global.increase")}
               icon={<FaSolidPlus />}
               onClick={() => {
                 setLocal(props.key, (parseInt(local[props.key]) + 1).toString())

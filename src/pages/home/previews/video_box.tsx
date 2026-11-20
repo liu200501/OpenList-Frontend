@@ -259,7 +259,7 @@ export const VideoBox = (props: {
           }}
         </For>
         <IconButton
-          aria-label="Show all players"
+          aria-label={t("home.preview.show_all_players")}
           variant="ghost"
           onClick={() => {
             const newShowAll = !showAll()

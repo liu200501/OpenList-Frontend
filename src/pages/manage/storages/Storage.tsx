@@ -12,7 +12,7 @@ import {
   ProgressIndicator,
   ProgressLabel,
 } from "@hope-ui/solid"
-import { Show } from "solid-js"
+import { createMemo, Show } from "solid-js"
 import { useFetch, useRouter, useT } from "~/hooks"
 import { getMainColor } from "~/store"
 import { MountDetails, PEmptyResp, PResp, Storage } from "~/types"
@@ -47,7 +47,18 @@ function StorageOp(props: StorageProps) {
       }`,
     ),
   )
-  // crypt 存储才有「明文 ↔ 密文」对照页；签名由后端签发，这里只负责换地址
+  // crypt 存储才有「明文 ↔ 密文」对照页；签名由后端签发，这里只负责换地址。
+  // name_map_scan 关闭时不会建立完整对照索引，此时对照页没有数据，直接隐藏入口。
+  // 老配置里没有该字段，按驱动默认值 true 处理。
+  const nameMapEnabled = createMemo(() => {
+    if (props.storage.driver !== "Crypt") return false
+    try {
+      const addition = JSON.parse(props.storage.addition || "{}")
+      return addition?.name_map_scan !== false
+    } catch {
+      return true
+    }
+  })
   const [nameMapLoading, getNameMapLink] = useFetch(
     (): PResp<{ url: string; name: string }> =>
       r.get(`/admin/storage/namemap?id=${props.storage.id}`),
@@ -80,7 +91,7 @@ function StorageOp(props: StorageProps) {
       >
         {t("global.edit")}
       </Button>
-      <Show when={props.storage.driver === "Crypt"}>
+      <Show when={nameMapEnabled()}>
         <Button loading={nameMapLoading()} onClick={openNameMap}>
           {t("storages.other.namemap")}
         </Button>

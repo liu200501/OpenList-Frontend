@@ -10,7 +10,7 @@ import { Motion } from "solid-motionone"
 import { useContextMenu } from "solid-contextmenu"
 import { batch, Show } from "solid-js"
 import { LinkWithPush } from "~/components"
-import { usePath, useRouter, useUtil } from "~/hooks"
+import { usePath, useRouter, useUtil, useT } from "~/hooks"
 import {
   checkboxOpen,
   getMainColor,
@@ -49,6 +49,7 @@ export const cols: Col[] = [
 ]
 
 export const ListItem = (props: { obj: StoreObj; index: number }) => {
+  const t = useT()
   const { isHide } = useUtil()
   if (isHide(props.obj)) {
     return null
@@ -140,7 +141,7 @@ export const ListItem = (props: { obj: StoreObj; index: number }) => {
                 as={FaSolidStar}
                 mr="$1"
                 cursor="pointer"
-                title="取消收藏"
+                title={t("home.toolbar.uncollect")}
                 on:mousedown={(e: MouseEvent) => {
                   e.stopPropagation()
                 }}

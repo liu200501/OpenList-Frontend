@@ -277,7 +277,9 @@ const AddOrEdit = () => {
             setImportOpened(false)
             notify.success(t("storages.common.import_success"))
           } catch (e: any) {
-            notify.error(`Invalid storage format: ${e.message}`)
+            notify.error(
+              t("storages.common.invalid_format", { error: e.message }),
+            )
           }
         }}
       />

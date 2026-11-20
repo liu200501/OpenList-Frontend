@@ -286,7 +286,7 @@ const Search = () => {
               />
               <IconButton
                 flexShrink={0}
-                aria-label="search"
+                aria-label={t("home.search.search")}
                 icon={<BsSearch />}
                 onClick={() => search()}
                 loading={loading()}

@@ -1,11 +1,12 @@
 import { Center, Heading } from "@hope-ui/solid"
-import { useManageTitle } from "~/hooks"
+import { useManageTitle, useT } from "~/hooks"
 
 const Dashboard = () => {
+  const t = useT()
   useManageTitle("manage.sidemenu.dashboard")
   return (
     <Center h="$full">
-      <Heading>Dashboard</Heading>
+      <Heading>{t("manage.sidemenu.dashboard")}</Heading>
     </Center>
   )
 }

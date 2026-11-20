@@ -146,7 +146,7 @@ const AddOrEdit = () => {
           type={Type.String}
           value={expireString()}
           valid={expireValid()}
-          placeholder="yyyy-MM-dd HH:mm:ss or +1w1d1H1m1s1ms"
+          placeholder={t("shares.expires_placeholder")}
           onChange={(e) => {
             setExpireString(e)
             if (e === "") {

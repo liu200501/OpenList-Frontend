@@ -450,7 +450,7 @@ function Editor(props: { data?: string | ArrayBuffer; contentType?: string }) {
               <PopoverBody p="$2">
                 <Input
                   size="xs"
-                  placeholder="Search language..."
+                  placeholder={t("home.preview.search_language")}
                   value={langSearch()}
                   onInput={(e) => setLangSearch(e.currentTarget.value)}
                   mb="$2"

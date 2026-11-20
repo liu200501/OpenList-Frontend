@@ -40,6 +40,69 @@ import { createStorageSignal } from "@solid-primitives/storage"
 
 type DriverSort = "none" | "asc" | "desc"
 
+// 折叠状态：模块级单例，所有分组共享同一份 signal，并持久化到 localStorage。
+// 必须提供 serializer/deserializer，否则数组会被存成 "A,B" 字符串后无法正确读回。
+const [collapsedDrivers, setCollapsedDrivers] = createStorageSignal<string[]>(
+  "storages-collapsed-drivers",
+  [],
+  {
+    serializer: (value) => JSON.stringify(value ?? []),
+    deserializer: (value) => {
+      try {
+        const parsed = JSON.parse(value)
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    },
+  },
+)
+
+// 按驱动分组的标题：大字号，点击整行即可折叠/展开该组。
+// 展开状态按驱动名存 localStorage，刷新/重进页面后保持。
+const DriverGroup = (props: {
+  driver: string
+  label: string
+  count: number
+  children: any
+}) => {
+  const collapsed = () => (collapsedDrivers() ?? []).includes(props.driver)
+  const toggle = () => {
+    const current = collapsedDrivers() ?? []
+    setCollapsedDrivers(
+      collapsed()
+        ? current.filter((d) => d !== props.driver)
+        : [...current, props.driver],
+    )
+  }
+  const isOpen = () => !collapsed()
+  return (
+    <VStack w="$full" spacing="$2" alignItems="start">
+      <HStack
+        spacing="$2"
+        onClick={toggle}
+        cursor="pointer"
+        userSelect="none"
+        title={isOpen() ? "折叠" : "展开"}
+      >
+        <Box
+          as="span"
+          display="inline-block"
+          css={{
+            transition: "transform 150ms ease",
+            transform: isOpen() ? "rotate(90deg)" : "rotate(0deg)",
+          }}
+        >
+          ▶
+        </Box>
+        <Heading size="lg">{props.label}</Heading>
+        <Badge colorScheme="info">{props.count}</Badge>
+      </HStack>
+      <Show when={isOpen()}>{props.children}</Show>
+    </VStack>
+  )
+}
+
 const Storages = () => {
   const t = useT()
   useManageTitle("manage.sidemenu.storages")
@@ -192,11 +255,11 @@ const Storages = () => {
           <VStack w="$full" spacing="$4" alignItems="start">
             <For each={groupedStorages()}>
               {([driver, items]) => (
-                <VStack w="$full" spacing="$2" alignItems="start">
-                  <HStack spacing="$2">
-                    <Heading size="sm">{driverLabel(driver)}</Heading>
-                    <Badge colorScheme="info">{items.length}</Badge>
-                  </HStack>
+                <DriverGroup
+                  driver={driver}
+                  label={driverLabel(driver)}
+                  count={items.length}
+                >
                   <Grid
                     w="$full"
                     gap="$2_5"
@@ -211,7 +274,7 @@ const Storages = () => {
                       )}
                     </For>
                   </Grid>
-                </VStack>
+                </DriverGroup>
               )}
             </For>
           </VStack>

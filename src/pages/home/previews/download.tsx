@@ -40,7 +40,7 @@ export const Download = (props: { openWith?: boolean }) => {
             <PopoverTrigger
               as={IconButton}
               icon={<BsQrCode />}
-              aria-label="QRCode"
+              aria-label={t("home.preview.qrcode")}
               onClick={() => {
                 setPinned(!pinned())
               }}
@@ -53,7 +53,7 @@ export const Download = (props: { openWith?: boolean }) => {
                 <Image
                   maxWidth="300px"
                   src={qrUrl()}
-                  alt="QR Code of download link"
+                  alt={t("home.preview.qr_code_of_link")}
                   objectFit="cover"
                 />
               </PopoverBody>

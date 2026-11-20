@@ -3,10 +3,11 @@ import { objStore } from "~/store"
 import { hope, Tooltip, IconButton } from "@hope-ui/solid"
 import { convertURL } from "~/utils"
 import { Component, createMemo } from "solid-js"
-import { useLink } from "~/hooks"
+import { useLink, useT } from "~/hooks"
 import { TbExternalLink } from "solid-icons/tb"
 
 const IframePreview = (props: { scheme: string }) => {
+  const t = useT()
   const { currentObjLink } = useLink()
   const iframeSrc = createMemo(() => {
     return convertURL(props.scheme, {
@@ -21,9 +22,9 @@ const IframePreview = (props: { scheme: string }) => {
       w="$full"
       h="70vh"
       extraButtons={
-        <Tooltip label="Open in new tab" withArrow>
+        <Tooltip label={t("home.preview.open_in_new_tab")} withArrow>
           <IconButton
-            aria-label="Open in new tab"
+            aria-label={t("home.preview.open_in_new_tab")}
             icon={<TbExternalLink />}
             onClick={() => {
               window.open(iframeSrc(), "_blank")

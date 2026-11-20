@@ -123,7 +123,7 @@ const Plugins = () => {
     try {
       const parsed = JSON.parse(importJsonText())
       if (!Array.isArray(parsed)) {
-        notify.error("Invalid JSON: must be an array of plugins")
+        notify.error(t("plugins.invalid_plugins_json"))
         return
       }
       const resp: Resp<{ count: number }> = await r.post(
@@ -137,7 +137,7 @@ const Plugins = () => {
         refresh()
       })
     } catch (e: any) {
-      notify.error("JSON parse failed: " + e.message)
+      notify.error(t("plugins.json_parse_failed", { error: e.message }))
     }
   }
 
@@ -224,7 +224,7 @@ const Plugins = () => {
                   <Th>{t("plugins.type")}</Th>
                   <Th>{t("plugins.version")}</Th>
                   <Th>{t("plugins.author")}</Th>
-                  <Th>{t("plugins.status")}</Th>
+                  <Th>{t("plugins.status_col")}</Th>
                   <Th>{t("global.operations")}</Th>
                 </Tr>
               </Thead>

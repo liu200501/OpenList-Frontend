@@ -50,7 +50,8 @@
       "back": "文件夹置底"
     },
     "enable_sign": "启用签名",
-    "disable_index": "禁用索引"
+    "disable_index": "禁用索引",
+    "invalid_format": "存储配置格式无效：{{error}}"
   },
   "table_fields": {
     "status": {
@@ -64,6 +65,7 @@
     "filter_by_driver": "按驱动筛选",
     "sort_by_driver": "点击按驱动排序",
     "namemap": "明文 / 密文对照",
-    "table_layout": "表格布局"
+    "table_layout": "表格布局",
+    "layout": "布局"
   }
 }

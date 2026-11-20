@@ -39,7 +39,7 @@ const findFirstImage = (
 }
 
 /* ============ 并发控制 ============ */
-const MAX_CONCURRENT = 4
+const MAX_CONCURRENT = 8
 let running = 0
 const queue: (() => void)[] = []
 const runLimited = <T,>(task: () => Promise<T>): Promise<T> => {
@@ -103,7 +103,7 @@ export type ArchiveCoverProps = {
 export const ArchiveCover = (props: ArchiveCoverProps) => {
   const { rawLink } = useLink()
   const { inView, observe } = useInView({
-    rootMargin: "200px",
+    rootMargin: "600px",
     threshold: 0.01,
   })
   const [imgError, setImgError] = createSignal(false)

@@ -38,6 +38,12 @@ export function createSpeedTracker(setUpload: SetUpload, total: number) {
   }
 }
 
+// 字节/秒 格式化成固定两位小数的 MB/s（沿用 getFileSize 的 1024 进制）
+export function formatSpeedMBps(bytesPerSecond: number): string {
+  if (!isFinite(bytesPerSecond) || bytesPerSecond <= 0) return "0.00 MB/s"
+  return `${(bytesPerSecond / 1024 / 1024).toFixed(2)} MB/s`
+}
+
 // 秒数格式化成 mm:ss / h:mm:ss
 export function formatETA(seconds?: number) {
   if (seconds === undefined || !isFinite(seconds) || seconds <= 0) return ""

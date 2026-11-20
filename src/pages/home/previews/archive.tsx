@@ -657,6 +657,12 @@ const Preview = () => {
     files().filter((f) => f.type === ObjType.IMAGE),
   )
 
+  // 整包只有图片（且确实有文件）时，进入即直接看第一张图。
+  // 注意不能用 imageFiles().length > 0：混有其它文件时那样会误判。
+  const onlyImages = createMemo(
+    () => files().length > 0 && files().every((f) => f.type === ObjType.IMAGE),
+  )
+
   const previews = createMemo(() => {
     const file = files().find((f) => f.name === selectedFile())
     if (!file) return []
@@ -699,6 +705,17 @@ const Preview = () => {
       }
     })
   }
+
+  // 纯图片包：文件列表一到就自动打开第一张图。
+  // 不跳路由、不显示 loading，直接在当前预览组件里切换，做到"无缝进去"。
+  // 只自动打开一次：用户从图片点面包屑回到列表后不再被强行拉回图片。
+  let hasAutoOpened = false
+  createEffect(() => {
+    if (requiringPassword() || error() !== "") return
+    if (hasAutoOpened || selectedFile() || !onlyImages()) return
+    hasAutoOpened = true
+    changeFile(files()[0].name)
+  })
 
   const currentIndex = createMemo(() =>
     files().findIndex((f) => f.name === selectedFile()),
@@ -826,14 +843,14 @@ const Preview = () => {
                       variant={viewMode() === "list" ? "solid" : "ghost"}
                       on:click={() => setViewMode("list")}
                     >
-                      列表
+                      {t("home.preview.view_list")}
                     </Button>
                     <Button
                       size="xs"
                       variant={viewMode() === "grid" ? "solid" : "ghost"}
                       on:click={() => setViewMode("grid")}
                     >
-                      网格
+                      {t("home.preview.view_grid")}
                     </Button>
                   </HStack>
                 </HStack>
@@ -863,7 +880,7 @@ const Preview = () => {
 
                 <Show when={viewMode() === "grid"}>
                   <Show
-                    when={imageFiles().length > 0}
+                    when={onlyImages()}
                     fallback={
                       <ArchiveGrid
                         objs={sortedObjs()}

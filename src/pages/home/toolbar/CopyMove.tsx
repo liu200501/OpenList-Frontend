@@ -128,6 +128,8 @@ export const Move = () => {
       opened={isOpen()}
       onClose={onClose}
       loading={loading()}
+      // 右键"移动"时优先定位到当前路径，而不是全局根目录 /
+      defaultValue={() => pathname()}
       headerSlot={(handler) => <CreateFolderButton handler={handler} />}
       footerSlot={
         <VStack w="$full" spacing="$2">

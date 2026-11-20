@@ -39,5 +39,7 @@
   "add_storage-tips": "You may need to fill in some information in the newly opened tab.",
   "messenger-tips": "You may need to fill in some information on this tab as prompted.",
   "load_default_setting": "Load default settings",
-  "load_default_setting_success": "Loaded successfully, not saved"
+  "load_default_setting_success": "Loaded successfully, not saved",
+  "menu": "Menu",
+  "logout": "Log out"
 }

@@ -39,5 +39,12 @@
   "invalid_filename_chars": "Filename cannot contain: / \\ ? < > * : | \"",
   "invalid_regex": "Invalid regular expression",
   "name": "Name",
-  "go_to_storages": "Go to Storages"
+  "go_to_storages": "Go to Storages",
+  "success": "Success",
+  "previous": "Previous",
+  "next": "Next",
+  "menu": "Menu",
+  "logout": "Log out",
+  "katex_css_load_failed": "Failed to load KaTeX CSS, math formulas will not be rendered",
+  "mermaid_js_load_failed": "Failed to load Mermaid JS, diagrams will not be rendered"
 }
