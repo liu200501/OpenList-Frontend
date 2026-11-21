@@ -1,168 +1,171 @@
-name: 构建与发布
+# This workflow is used to create a (pre-)release build of the OpenList frontend.
+#
+# This will:
+#
+# - Update the `package.json` version to the specified version (when triggered
+#   by `workflow_dispatch`), commit the changes and tag it.
+# - Upload the release assets to GitHub.
+# - Publish the package to npm.
+#
+# # Usage
+#
+# This workflow can be triggered by:
+#
+# - Pushing a tag that matches the pattern `v[0-9]+.[0-9]+.[0-9]+*` (semver format).
+# - Manually via the GitHub Actions UI with a version input.
+#
+# To create (pre-)release builds, we recommend that you use the `workflow_dispatch`.
+
+name: Release Build
 
 on:
-  # 监听所有 v 开头或纯数字开头的标签推送
   push:
     tags:
-      - "v*"
-      - "[0-9]*"
+      - "v[0-9]+.[0-9]+.[0-9]+*"
   workflow_dispatch:
     inputs:
       version:
-        description: "目标版本号（不要 v，例如 4.2.9.9me）"
+        description: |
+          Target version (e.g., 1.0.0), will create a tag named 'v<version>' and update package.json version
         required: true
         type: string
-      tag:
-        description: "发布标签名（留空则使用 <version>）"
-        required: false
-        type: string
-      title:
-        description: "发布标题（留空则使用“发布 <tag>”）"
-        required: false
-        type: string
-      description:
-        description: "发布说明（支持 Markdown 格式，留空则自动生成）"
-        required: false
-        type: string
-
-permissions:
-  contents: write
 
 jobs:
-  build-and-release:
-    name: 构建与发布
+  release:
+    name: Release
     runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
+      - name: Checkout code
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
           submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.BOT_TOKEN }}
 
-      - name: 安装 Node
+      - name: Validate and trim semver
+        id: semver
+        uses: matt-usurp/validate-semver@v3.0.0
+        with:
+          version: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+
+      - name: Check if version is pre-release
+        id: check_pre_release
+        run: |
+          if [[ -z "${{ steps.semver.outputs.prerelease }}" && -z "${{ steps.semver.outputs.build }}" ]]; then
+            echo "is_pre_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_pre_release=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: "24.20.0"
+          node-version: "24.22.2"
+          registry-url: "https://registry.npmjs.org"
 
-      - name: 安装 pnpm
+      - name: Install pnpm
         uses: pnpm/action-setup@v6
         with:
           run_install: false
 
-      # ============ workflow_dispatch 时：同步版本、提交、打标签 ============
-      - name: 准备版本与标签
+      - name: Import GPG key
+        if: github.event_name == 'workflow_dispatch'
+        uses: crazy-max/ghaction-import-gpg@v7
+        with:
+          gpg_private_key: ${{ secrets.BOT_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.BOT_GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: Setup CI Bot
         if: github.event_name == 'workflow_dispatch'
         run: |
-          set -e
-          VERSION="${{ github.event.inputs.version }}"
-          RELEASE_TAG="${{ github.event.inputs.tag }}"
+          git config user.name "${{ secrets.BOT_USERNAME }}"
+          git config user.email "${{ secrets.BOT_USEREMAIL }}"
 
-          # 如果 tag 留空，直接使用 version
-          if [ -z "$RELEASE_TAG" ]; then
-            RELEASE_TAG="$VERSION"
-          fi
-
-          echo "正在准备发布 $RELEASE_TAG"
-
-          # 配置 git 身份
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # 同步 package.json 版本
-          jq --arg v "$VERSION" '.version = $v' package.json > package.json.tmp
-          mv package.json.tmp package.json
+      - name: Update package.json and commit
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          jq --arg version "${{ steps.semver.outputs.version }}" '.version = $version' package.json > package.json.tmp && mv package.json.tmp package.json
           git add package.json
-          git commit -m "chore: 发布 $RELEASE_TAG" --no-verify || echo "没有需要提交的更改"
+          git commit -S -m "chore: release v${{ steps.semver.outputs.version }}" --no-verify
+          git push
 
-          # 删除旧的 edge 标签，避免干扰 git describe
+          # For local build, needn't push, the tag will be created by `gh release create`
+          git tag -s "v${{ steps.semver.outputs.version }}" -m "Release v${{ steps.semver.outputs.version }}"
+
+      - name: Get current tag
+        id: get_current_tag
+        run: |
+          # Remove existing tag `edge`, since `edge` should always point to the latest commit
+          # This is necessary to avoid conflicts with the changelog generation
           git tag -d edge 2>/dev/null || true
 
-          # 打上正式版本标签
-          git tag -a "$RELEASE_TAG" -m "发布 $RELEASE_TAG" -f
+          # Get the current tag
+          CURRENT_TAG=$(git describe --tags --abbrev=0)
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
 
-          # 推送提交到默认分支
-          git push origin HEAD:${{ github.event.repository.default_branch }} || git push origin HEAD
-
-          # 推送标签，带重试应对 GitHub 偶发 500
-          for i in 1 2 3; do
-            if git push origin "$RELEASE_TAG" -f; then
-              echo "标签 $RELEASE_TAG 推送成功"
-              break
-            fi
-            echo "标签推送失败，第 $i 次重试..."
-            sleep $((i * 5))
-            if [ "$i" -eq 3 ]; then
-              echo "标签推送连续失败，终止"
-              exit 1
-            fi
-          done
-
-      # ============ 统一拿到本次构建用的标签 ============
-      - name: 确定标签
-        id: release_tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ github.event.inputs.version }}"
-            RELEASE_TAG="${{ github.event.inputs.tag }}"
-            if [ -z "$RELEASE_TAG" ]; then
-              RELEASE_TAG="$VERSION"
-            fi
-            echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          # Temporarily remove all pre-release tags (tags containing '-' / '+')
+          # This prevents them from interfering with changelog generation
+          PRE_RELEASE_TAGS=$(git tag -l | grep -E "(-|\+)" || true)
+          if [ -n "$PRE_RELEASE_TAGS" ]; then
+            echo "Temporarily removing pre-release tags: $PRE_RELEASE_TAGS"
+            echo "$PRE_RELEASE_TAGS" | xargs -r git tag -d
           fi
 
-      # ============ 构建 regular 版本 ============
-      - name: 构建常规版本
+          # Add back the current tag if is a pre-release
+          # Should not add `-f`, as it will overwrite the existing tag
+          if [[ "${{ steps.check_pre_release.outputs.is_pre_release }}" == "true" ]]; then
+            git tag -s "$CURRENT_TAG" -m "Release $CURRENT_TAG"
+          fi
+
+      - name: Generate changelog
+        id: generate_changelog
+        run: |
+          npx changelogithub --output ${{ github.workspace }}-CHANGELOG.txt || echo "" > ${{ github.workspace }}-CHANGELOG.txt
+
+      - name: Build Release
         run: |
           chmod +x build.sh
           ./build.sh --release --compress
-
-      - name: 移动常规版本产物
-        run: |
-          mkdir -p regular-dist
-          mv dist/* regular-dist/
-
-      # ============ 构建 lite 版本 ============
-      - name: 构建精简版本
-        run: |
-          chmod +x build.sh
-          ./build.sh --release --compress --lite
         env:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
 
-      - name: 移动精简版本产物并恢复常规版本
+      - name: Upload Release Assets
         run: |
-          mkdir -p lite-dist
-          mv dist/* lite-dist/
-          mv regular-dist/* dist/
-
-      # ============ 创建 Release 并上传产物 ============
-      - name: 创建发布
-        run: |
-          TAG="${{ steps.release_tag.outputs.tag }}"
-          TITLE="${{ github.event.inputs.title }}"
-          DESCRIPTION="${{ github.event.inputs.description }}"
-
-          if [ -z "$TITLE" ]; then
-            TITLE="发布 $TAG"
-          fi
-
-          ARGS=(--title "$TITLE")
-
-          # 支持 Markdown：直接传入 description，如果为空则让 gh 自动生成
-          if [ -n "$DESCRIPTION" ]; then
-            ARGS+=(--notes "$DESCRIPTION")
-          else
-            ARGS+=(--generate-notes)
-          fi
-
-          gh release create "$TAG" \
-            "${ARGS[@]}" \
-            dist/openlist-frontend-dist-*.tar.gz \
-            lite-dist/openlist-frontend-dist-lite-*.tar.gz \
-            dist/i18n.tar.gz
+          # Delete local tag, or gh cli will complain about it.
+          git tag -d ${{ steps.get_current_tag.outputs.current_tag }}
+          gh release create \
+            --title "Release ${{ steps.get_current_tag.outputs.current_tag }}" \
+            --notes-file "${{ github.workspace }}-CHANGELOG.txt" \
+            --prerelease=${{ steps.check_pre_release.outputs.is_pre_release }} \
+            ${{ steps.get_current_tag.outputs.current_tag }} \
+            dist/openlist-frontend-dist-v*.tar.gz dist/i18n.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare for npm
+        run: |
+          # Delete the generated dist tarball
+          rm -f dist/openlist-frontend-dist-v*.tar.gz
+
+          if ! jq -e '.name and .version' package.json > /dev/null; then
+            echo "Error: Invalid package.json"
+            exit 1
+          fi
+
+      - name: Publish npm (Trusted publishing)
+        run: |
+          if [ "${{ secrets[format('{0}', 'NPM_PUBLISH')] }}" = "yes" ]; then
+            echo "NPM_PUBLISH=yes, publishing to npm with trusted publishing..."
+            pnpm publish --no-git-checks --access public --provenance
+          else
+            echo "NPM_PUBLISH is not yes, performing dry run"
+            pnpm publish --dry-run --no-git-checks --access public
+          fi
+
+permissions:
+  contents: write
+  id-token: write

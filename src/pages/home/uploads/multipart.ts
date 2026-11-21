@@ -1,11 +1,9 @@
 import { getSettingNumber, password } from "~/store"
 import { Resp } from "~/types"
 import { r } from "~/utils"
-import { useT } from "~/hooks"
-import { SetUpload, Upload } from "./types"
+import { seedUploadHeaders, SetUpload, Upload } from "./types"
 import { calculateHash } from "./util"
 import { StreamUpload } from "./stream"
-import { createSpeedTracker } from "./speed"
 
 type MultipartState =
   | "receiving"
@@ -74,13 +72,22 @@ export const MultipartUpload: Upload = async (
   _asTask = false, // sessions are synchronous pipelines; As-Task does not apply
   overwrite = false,
   rapid = false,
+  seedOptions,
 ): Promise<Error | undefined> => {
   // a single-chunk multipart upload costs 3 requests where Stream costs 1,
   // and small files pass CDN body limits anyway — silently fall back
   const fallbackThreshold =
     Math.max(1, getSettingNumber("multipart_chunk_size", 10)) * 1024 * 1024
   if (file.size <= fallbackThreshold) {
-    return StreamUpload(uploadPath, file, setUpload, false, overwrite, rapid)
+    return StreamUpload(
+      uploadPath,
+      file,
+      setUpload,
+      false,
+      overwrite,
+      rapid,
+      seedOptions,
+    )
   }
 
   const initHeaders: Record<string, string | number> = {
@@ -93,6 +100,7 @@ export const MultipartUpload: Upload = async (
     "Last-Modified": file.lastModified,
     Password: password(),
     Overwrite: overwrite.toString(),
+    ...seedUploadHeaders(seedOptions),
   }
   if (rapid) {
     setUpload("status", "hashing")
@@ -117,7 +125,7 @@ export const MultipartUpload: Upload = async (
       r.post("/fs/multipart/init", undefined, { headers: initHeaders }),
     )
     if (initResp) break
-    if (i >= 2) throw new Error(useT()("home.upload.multipart_init_failed"))
+    if (i >= 2) throw new Error("multipart init failed: network error")
     await sleep(1000 * (i + 1))
   }
   if (initResp!.code !== 200) {
@@ -127,7 +135,15 @@ export const MultipartUpload: Upload = async (
   // 后端不支持分片（存储驱动无会话上传能力）时返回 data:null，
   // 回退到流式上传，保证任意存储都能上传
   if (!session) {
-    return StreamUpload(uploadPath, file, setUpload, false, overwrite, rapid)
+    return StreamUpload(
+      uploadPath,
+      file,
+      setUpload,
+      false,
+      overwrite,
+      rapid,
+      seedOptions,
+    )
   }
   const uploadId = session.upload_id
   const chunkSize = session.chunk_size
@@ -155,13 +171,19 @@ export const MultipartUpload: Upload = async (
   // from the sum until it is resent; report the high-water mark so progress
   // plateaus instead of jumping backwards and speed can never go negative
   let peakDone = ackedBytes
-  const trackSpeed = createSpeedTracker(setUpload, file.size)
+  let lastTime = Date.now()
+  let lastBytes = ackedBytes
   const report = () => {
     let inflight = 0
     for (const v of Object.values(inflightLoaded)) inflight += v
     peakDone = Math.max(peakDone, Math.min(ackedBytes + inflight, file.size))
     setUpload("progress", ((peakDone / file.size) * 100) | 0)
-    trackSpeed(peakDone)
+    const now = Date.now()
+    if (now - lastTime >= 1000) {
+      setUpload("speed", ((peakDone - lastBytes) / (now - lastTime)) * 1000)
+      lastTime = now
+      lastBytes = peakDone
+    }
   }
 
   let completedEarly = false // rapid upload finished the session server-side

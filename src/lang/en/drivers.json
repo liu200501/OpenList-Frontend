@@ -201,7 +201,19 @@
     "upload_thread": "Upload thread",
     "upload_thread-tips": "1<=thread<=32",
     "username": "Username",
-    "validate_code": "Validate code"
+    "validate_code": "Validate code",
+    "client_sn": "Client sn",
+    "client_sn-tips": "Device serial number captured from the official client, leave it empty if you do not have one",
+    "device_id": "Device id",
+    "device_id-tips": "DEVICEID cookie issued after the second device verification, keep it to avoid verifying again",
+    "jg_open_id": "Jg open id",
+    "jg_open_id-tips": "Optional push id reported by the official client",
+    "password-tips": "Not needed when an access token or refresh token is provided",
+    "sms_code": "Sms code",
+    "sms_code-tips": "SMS code for the second device verification, fill it in and save again when login asks for it",
+    "user_finger": "User finger",
+    "user_finger-tips": "Device fingerprint sent with login requests, generated and kept automatically when empty",
+    "username-tips": "Not needed when an access token or refresh token is provided"
   },
   "189CloudTV": {
     "access_token": "Access token",
@@ -345,7 +357,9 @@
       "trash": "Trash"
     },
     "root_folder_id": "Root folder id",
-    "use_online_api": "Use online api"
+    "use_online_api": "Use online api",
+    "callback_concurrency": "Callback concurrency",
+    "callback_concurrency-tips": "Maximum active proxied downloads shared by Aliyun user"
   },
   "AliyundriveShare": {
     "order_by": "Order by",
@@ -883,7 +897,9 @@
     "video_thumb_pos": "Video thumb pos",
     "video_thumb_pos-tips": "The position of the video thumbnail. If the value is a number (integer ot floating point), it represents the time in seconds. If the value ends with '%', it represents the percentage of the video duration.",
     "thumbnail_width": "Thumbnail width",
-    "thumbnail_width-tips": "Thumbnail width in pixels. Height is scaled proportionally. If set to 0, the original width is used."
+    "thumbnail_width-tips": "Thumbnail width in pixels. Height is scaled proportionally. If set to 0, the original width is used.",
+    "pdf_thumbnail": "Pdf thumbnail",
+    "pdf_thumbnail-tips": "Generate PDF first-page thumbnails with Quick Look on macOS"
   },
   "MediaFire": {
     "chunk_size": "Chunk size",
@@ -1052,7 +1068,9 @@
     },
     "refresh_token": "Refresh token",
     "root_folder_id": "Root folder id",
-    "username": "Username"
+    "username": "Username",
+    "skip_verification": "Skip verification",
+    "skip_verification-tips": "ignore the human verification URL returned by the captcha API instead of failing; enabling this may trigger PikPak risk control"
   },
   "PikPakShare": {
     "api_proxy": "API proxy",
@@ -1706,7 +1724,8 @@
     "WeiYun": {},
     "WoPan": {},
     "YandexDisk": {},
-    "cloudflare_imgbed": {}
+    "cloudflare_imgbed": {},
+    "CtFile": {}
   },
   "drivers": {
     "115 Cloud": "115 Cloud",
