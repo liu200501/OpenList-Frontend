@@ -24,8 +24,12 @@ main() {
     parse_args "$@"
     set_defaults
     check_git_version_and_commit
-    set_build_version
-    archive_name="openlist-frontend-dist-${version_tag}"
+    update_package_version
+    if [[ "$LITE_FLAG" == "true" ]]; then
+        archive_name="openlist-frontend-dist-lite-${version_tag}"
+    else
+        archive_name="openlist-frontend-dist-${version_tag}"
+    fi
     build_project
     create_version_file
     handle_compression
@@ -42,6 +46,7 @@ parse_args() {
             --no-compress) COMPRESS_FLAG="false"; shift ;;
             --enforce-tag) ENFORCE_TAG="true"; shift ;;
             --skip-i18n) SKIP_I18N="true"; shift ;;
+            --lite) LITE_FLAG="true"; shift ;;
             -h|--help) display_help; exit 0 ;;
             *) log_error "Unknown option: $1"; display_help; exit 1 ;;
         esac
@@ -50,7 +55,7 @@ parse_args() {
 
 # Display help message
 display_help() {
-    echo "Usage: $0 [--dev|--release] [--compress|--no-compress] [--enforce-tag] [--skip-i18n]"
+    echo "Usage: $0 [--dev|--release] [--compress|--no-compress] [--enforce-tag] [--skip-i18n] [--lite]"
     echo ""
     echo "Options (will overwrite environment setting):"
     echo "  --dev         Build development version"
@@ -58,7 +63,8 @@ display_help() {
     echo "  --compress    Create compressed archive"
     echo "  --no-compress Skip compression"
     echo "  --enforce-tag Force git tag requirement for both dev and release builds"
-    echo "  --skip-i18n   Skip i18n build step"
+    echo "  --skip-i18n   Skip i18n generation step (uses existing src/lang as-is)"
+    echo "  --lite        Build lite version"
     echo ""
     echo "Environment variables:"
     echo "  OPENLIST_FRONTEND_BUILD_MODE=dev|release (default: dev)"
@@ -73,6 +79,7 @@ set_defaults() {
     COMPRESS_FLAG=${COMPRESS_FLAG:-${OPENLIST_FRONTEND_BUILD_COMPRESS:-false}}
     ENFORCE_TAG=${ENFORCE_TAG:-${OPENLIST_FRONTEND_BUILD_ENFORCE_TAG:-false}}
     SKIP_I18N=${SKIP_I18N:-${OPENLIST_FRONTEND_BUILD_SKIP_I18N:-false}}
+    LITE_FLAG=${LITE_FLAG:-false}
 }
 
 # Check git version and commit
@@ -97,7 +104,7 @@ enforce_git_tag() {
 
 # Validate git tag against package.json version
 validate_git_tag() {
-    package_version=$(node -p 'require("./package.json").version')
+    package_version=$(grep '"version":' package.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
     git_version_clean=${git_version#v}
     if [[ "$git_version_clean" != "$package_version" ]]; then
         log_error "Package.json version (${package_version}) does not match git tag (${git_version_clean})."
@@ -107,23 +114,22 @@ validate_git_tag() {
 
 # Fallback to default git tag for development builds
 fallback_git_tag() {
-    if ! git_version=$(git describe --abbrev=0 --tags --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null); then
-        git_version_clean=$(node -p 'require("./package.json").version')
-        return
-    fi
-
+    git tag -d edge >/dev/null 2>&1 || true
+    git_version=$(git describe --abbrev=0 --tags 2>/dev/null || echo "v0.0.0")
     git_version_clean=${git_version#v}
-    if [[ "$git_version_clean" =~ ^([0-9]+\.[0-9]+\.[0-9]+)([-+][0-9A-Za-z.-]+)?$ ]]; then
-        git_version_clean=${BASH_REMATCH[1]}
-    else
-        git_version_clean=$(node -p 'require("./package.json").version')
-    fi
+    git_version_clean=${git_version_clean%%-*}
 }
 
-# Set the version for the build
-set_build_version() {
+# Update package.json version
+update_package_version() {
     if [[ "$BUILD_TYPE" == "dev" ]]; then
-        log_info "Using ${git_version_clean} as the development build version"
+        # Handle both BSD and GNU sed syntax
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i "" "s/\"version\": *\"[^\"]*\"/\"version\": \"${git_version_clean}\"/" package.json
+        else
+            sed -i "s/\"version\": *\"[^\"]*\"/\"version\": \"${git_version_clean}\"/" package.json
+        fi
+        log_success "Package.json version updated to ${git_version_clean}"
         version_tag="v${git_version_clean}-${commit}"
         log_build "Building DEV version ${version_tag}..."
     elif [[ "$BUILD_TYPE" == "release" ]]; then
@@ -141,55 +147,17 @@ build_project() {
     pnpm install
 
     log_step "==== Building i18n ===="
-    if [[ "$SKIP_I18N" == "false" ]]; then
-        if ! pnpm i18n:release; then
-            log_warning "Crowdin download failed, falling back to the edge beta release"
-            fetch_i18n_from_release "edge" || true
-        fi
-    else
-        fetch_i18n_from_release "edge" || true
-    fi
-
-    # Always generate entry.ts and fill missing translation files for all languages
+    # 使用本地 src/lang 下的 JSON 作为翻译源，直接生成 entry.ts 并补齐缺失语言文件。
+    # 不再调用 Crowdin，也不再从 GitHub Release 下载 i18n.tar.gz 覆盖源码。
     log_info "Running i18n build script to generate entry.ts..."
     node ./scripts/i18n.mjs
 
     log_step "==== Building project ===="
-    pnpm build
-}
-
-# Fetch i18n files from release if skip-i18n flag is set
-fetch_i18n_from_release() {
-    local release_tag=${1:-edge}
-
-    log_warning "Trying to fetch i18n files from GitHub release: $release_tag"
-    release_response=$(curl -fsSL "https://api.github.com/repos/OpenListTeam/OpenList-Frontend/releases/tags/$release_tag") || {
-        log_warning "Failed to fetch release info for $release_tag."
-        return 1
-    }
-    extract_i18n_tarball "$release_response"
-}
-
-# Extract i18n tarball
-extract_i18n_tarball() {
-    i18n_file_url=$(echo "$1" | grep -oP '"browser_download_url":\s*"\K[^"]*' | grep "i18n.tar.gz") || true
-    if [[ -z "$i18n_file_url" ]]; then
-        log_warning "i18n.tar.gz not found in release assets."
-        return 1
+    if [[ "$LITE_FLAG" == "true" ]]; then
+        pnpm build:lite
     else
-        log_info "Downloading i18n.tar.gz from GitHub..."
-        if curl -fL -o "i18n.tar.gz" "$i18n_file_url"; then
-            if tar -xzf i18n.tar.gz -C src/lang; then
-                log_info "i18n files extracted to src/lang/"
-                return 0
-            else
-                log_warning "Failed to extract i18n.tar.gz."
-            fi
-        else
-            log_warning "Failed to download i18n.tar.gz."
-        fi
+        pnpm build
     fi
-    return 1
 }
 
 # Create VERSION file in the dist directory
