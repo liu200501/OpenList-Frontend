@@ -46,5 +46,13 @@ export interface TranscodePlayResult {
  *  - 音频统一重编码为 AAC；多条音轨各自一条 rendition，可在播放器切换
  *  - 内嵌文本字幕轨可按需转成 WebVTT 直接加载
  */
-export const requestTranscodePlay = (path: string) =>
-  r.post("/fs/transcode/play", { path }) as Promise<Resp<TranscodePlayResult>>
+export const requestTranscodePlay = (
+  path: string,
+  videoTranscode = true,
+  audioTranscode = true,
+) =>
+  r.post("/fs/transcode/play", {
+    path,
+    video_transcode: videoTranscode,
+    audio_transcode: audioTranscode,
+  }) as Promise<Resp<TranscodePlayResult>>

@@ -274,6 +274,14 @@
   "transcode_chunk_prefetch-tips": "当前 chunk 转码进度过半时，是否预启动下一个 chunk（默认开启，可让顺序播放无缝衔接）",
   "transcode_enabled": "启用转码",
   "transcode_enabled-tips": "开启后，超过阈值的媒体文件将通过 FFmpeg 转码后再播放；默认关闭",
+  "transcode_scope": "转码范围",
+  "transcode_scope-tips": "all=对所有文件启用转码；paths=仅对下方列出文件夹内的文件转码，其余一律直链播放",
+  "transcode_scope_paths": "转码文件夹",
+  "transcode_scope_paths-tips": "允许转码的文件夹路径，每行一个（也支持逗号分隔）。按前缀匹配：填 /电影 则 /电影/xxx.mkv 转码，/电视剧/xxx.mkv 不转。仅当转码范围=paths 时生效",
+  "transcode_scopes": {
+    "all": "全部文件",
+    "paths": "仅指定文件夹"
+  },
   "transcode_ffmpeg_path": "FFmpeg 路径",
   "transcode_ffmpeg_path-tips": "FFmpeg 可执行路径，留空则使用 PATH 中的 ffmpeg",
   "transcode_ffprobe_path": "FFprobe 路径",

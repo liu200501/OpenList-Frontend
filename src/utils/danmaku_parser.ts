@@ -78,19 +78,32 @@ function normalizeColor(raw: number | string): string {
  */
 export function parseDanmakuXml(xml: string): DanmuItem[] {
   // \b 保证 p 是独立属性名；[^>]* 不会跨越 '>'，因此不会吞掉嵌套标签。
-  const dTag = /<d\b[^>]*?\bp="([^"]*)"[^>]*>([\s\S]*?)<\/d>/g
+  const dTag = /<d\b([^>]*)>([\s\S]*?)<\/d>/g
   const result: DanmuItem[] = []
   let match: RegExpExecArray | null
 
   while ((match = dTag.exec(xml)) !== null) {
-    const attr = match[1].split(",")
+    const attrs = match[1]
+    const textRaw = match[2]
+    // p 必须是独立属性名（\b 边界），避免误匹配 timestamp 的 p。
+    const pMatch = /\bp="([^"]*)"/.exec(attrs)
+    if (!pMatch) continue
+    const attr = pMatch[1].split(",")
     if (attr.length < 4) continue // 时间/模式/字号/颜色都没有，跳过
 
     const time = Number(attr[0])
     if (!Number.isFinite(time) || time < 0) continue
 
-    const text = decodeEntities(match[2].trim())
+    let text = decodeEntities(textRaw.trim())
     if (!text) continue
+
+    // 弹幕带上用户名：@用户名：弹幕内容
+    // danmuji 抖音 XML 把用户名放在 user="..." 属性里。
+    const userMatch = /\buser="([^"]*)"/.exec(attrs)
+    const user = userMatch ? decodeEntities(userMatch[1]).trim() : ""
+    if (user) {
+      text = `@${user}：${text}`
+    }
 
     result.push({
       // 插件 emit 对 time=0 判为 falsy 会改成 currentTime+0.5，

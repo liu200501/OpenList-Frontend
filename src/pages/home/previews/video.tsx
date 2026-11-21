@@ -133,6 +133,11 @@ const Preview = () => {
   // 转码返回的轨道信息（多音轨/多视频轨/内嵌字幕），用于生成切换菜单
   let transcodeTracks: TranscodePlayResult | undefined
   let transcodeMenusApplied = false
+  // 播放端齿轮开关：视频/音频是否转码。切换时用新的组合重新申请转码流。
+  let videoTranscodeOn = true
+  let audioTranscodeOn = true
+  // 原始直链 url，齿轮切换转码关时回退到这里
+  const directUrl = objStore.raw_url
 
   // 浮窗（可调任意尺寸的画中画）图标
   const FLOAT_ON_ICON =
@@ -743,6 +748,52 @@ const Preview = () => {
     )
   }
 
+  // 申请转码流：按当前齿轮开关向后端要 master_url；失败返回 null 走直链。
+  // 初始化与齿轮切换"视频转码/音频转码"共用这段逻辑。
+  const fetchTranscodePlay = async (videoOn: boolean, audioOn: boolean) => {
+    try {
+      const resp = await requestTranscodePlay(pathname(), videoOn, audioOn)
+      if (resp.code === 200 && resp.data?.transcode && resp.data.master_url) {
+        console.log(
+          `[transcode] 使用转码播放: job=${resp.data.job_id}, 视频转码=${videoOn}, 音频转码=${audioOn}, 音轨=${(resp.data.audio_tracks ?? []).length}, 视频轨=${(resp.data.video_tracks ?? []).length}, 字幕=${(resp.data.subtitles ?? []).length}`,
+        )
+        return resp.data
+      }
+      console.log(
+        `[transcode] 无需转码或转码不可用: ${resp.data?.reason ?? resp.code}`,
+      )
+    } catch (err) {
+      console.warn("[transcode] 转码探测失败，降级为直链播放", err)
+    }
+    return null
+  }
+
+  // 齿轮切换视频/音频转码开关后：重新申请对应组合的转码流并切换播放地址。
+  // 关掉两路时直接回到原始直链。切流保留当前播放进度。
+  const switchTranscodeStream = async (videoOn: boolean, audioOn: boolean) => {
+    const result = await fetchTranscodePlay(videoOn, audioOn)
+    if (disposed || !player) return
+    const resumeAt = player.currentTime
+    transcodeTracks = result ?? undefined
+    transcodeMenusApplied = false
+    if (result) {
+      player.switchUrl(result.master_url!)
+    } else {
+      player.switchUrl(directUrl)
+    }
+    // 新流重新挂载轨道/字幕菜单，并尽量恢复进度
+    player.once("ready", () => {
+      applyTranscodeTrackMenus()
+      if (resumeAt > 0) {
+        try {
+          player.currentTime = resumeAt
+        } catch (_) {
+          /* 新流尚未缓冲到该位置，忽略 */
+        }
+      }
+    })
+  }
+
   // 【转码多轨】把后端返回的轨道信息渲染为 Artplayer 设置菜单：
   //   音轨 → hls audioTrack（或 Safari 原生 audioTracks）
   //   视频轨 → hls currentLevel（每条视频轨对应一个 variant）
@@ -839,6 +890,71 @@ const Preview = () => {
     }
   }
 
+  // 齿轮里的通用菜单：视频/音频转码开关 + 自定义字幕。
+  // 与轨道菜单分开挂载——即使当前文件没触发转码，这两个能力也要可用。
+  let commonMenusApplied = false
+  const applyCommonMenus = () => {
+    if (!player || commonMenusApplied) return
+    commonMenusApplied = true
+
+    // 视频转码开关：开=按设置的分辨率/码率重编码（可切视频轨）；关=视频流 copy
+    player.setting.add({
+      id: "setting_video_transcode",
+      html: "视频转码",
+      tooltip: videoTranscodeOn ? "开" : "关",
+      switch: videoTranscodeOn,
+      onSwitch: function (item: any) {
+        item.switch = !item.switch
+        videoTranscodeOn = item.switch
+        item.tooltip = item.switch ? "开" : "关"
+        switchTranscodeStream(videoTranscodeOn, audioTranscodeOn)
+        return item.switch
+      },
+    })
+
+    // 音频转码开关：开=把 DTS/AC3 等转成浏览器可识别的 AAC（可切音轨）；关=音频流 copy
+    player.setting.add({
+      id: "setting_audio_transcode",
+      html: "音频转码",
+      tooltip: audioTranscodeOn ? "开" : "关",
+      switch: audioTranscodeOn,
+      onSwitch: function (item: any) {
+        item.switch = !item.switch
+        audioTranscodeOn = item.switch
+        item.tooltip = item.switch ? "开" : "关"
+        switchTranscodeStream(videoTranscodeOn, audioTranscodeOn)
+        return item.switch
+      },
+    })
+
+    // 自定义字幕：输入一个字幕 URL（vtt/srt/ass）动态添加到字幕菜单
+    let customSubCount = 0
+    player.setting.add({
+      id: "setting_custom_subtitle",
+      html: "添加字幕",
+      onClick: function () {
+        const url = window.prompt("输入字幕地址（.vtt / .srt / .ass）：")
+        if (!url || !url.trim()) return
+        const u = url.trim()
+        let name =
+          u.split("/").pop()?.split("?")[0] || `自定义字幕 ${++customSubCount}`
+        const isAss = ext(name).toLowerCase() === "ass"
+        if (isAss) {
+          player.emit("artplayer-plugin-ass:switch" as any, u)
+          player.subtitle.show = false
+        } else {
+          player.subtitle.switch(u, { name } as any)
+          player.once("subtitleLoad", () => (player.subtitle.show = true))
+        }
+        // 把自定义字幕追加进字幕菜单，方便切回
+        const subMenu = player.setting.find?.("setting_subtitle")
+        if (subMenu?.selector) {
+          ;(subMenu.selector as any[]).push({ html: name, name, url: u })
+        }
+      },
+    } as any)
+  }
+
   onMount(async () => {
     if (disposed) return
 
@@ -848,30 +964,17 @@ const Preview = () => {
       ? fetchDanmaku(proxyLink(danmu, true))
       : Promise.resolve([])
 
-    // 【转码接入】播放前先问后端是否需要转码。
-    // 后端会把 DTS/AC3/EAC3/TrueHD 这类浏览器 MSE 不支持的音轨统一重编码为 AAC，
-    // 输出 HLS 切片；需要转码时用 master_url 替换直链，播放器走 m3u8 分支（hls.js）。
-    // 不做前端开关判断：转码关闭时后端直接返回 {transcode:false, reason:"disabled"}，
-    // 少一次设置依赖，避免 media_enabled 没开就整条链路静默失效。
-    // 转码接口异常（网络错误 / 后端未开启媒体库返回 404 / 配额耗尽 429 等）时
-    // 静默降级为原有直链播放，绝不让转码探测失败阻断播放器初始化。
-    try {
-      const tcResp = await requestTranscodePlay(pathname())
-      if (
-        tcResp.code === 200 &&
-        tcResp.data?.transcode &&
-        tcResp.data.master_url
-      ) {
-        transcodeTracks = tcResp.data
-        option.url = tcResp.data.master_url
-        option.type = "m3u8"
-        console.log(
-          `[transcode] 使用转码播放: job=${tcResp.data.job_id}, profile=${tcResp.data.profile}, 音轨=${(tcResp.data.audio_tracks ?? []).length}, 视频轨=${(tcResp.data.video_tracks ?? []).length}, 字幕=${(tcResp.data.subtitles ?? []).length}`,
-        )
-      }
-    } catch (err) {
-      transcodeTracks = undefined
-      console.warn("[transcode] 转码探测失败，降级为直链播放", err)
+    // 【转码接入】播放前先问后端是否需要转码（带上齿轮开关的默认状态）。
+    // 后端按转码范围/阈值判断，并把 DTS/AC3 等浏览器不支持的音轨重编码为 AAC；
+    // 需要转码时返回 master_url 走 hls.js；探测失败一律静默降级直链，不阻断播放。
+    const initialTranscode = await fetchTranscodePlay(
+      videoTranscodeOn,
+      audioTranscodeOn,
+    )
+    if (initialTranscode) {
+      transcodeTracks = initialTranscode
+      option.url = initialTranscode.master_url!
+      option.type = "m3u8"
     }
     // 等待转码响应期间用户可能已经离开页面：onCleanup 早已执行，
     // 此时再创建实例就没有人会销毁它，必须放弃初始化。
@@ -896,21 +999,24 @@ const Preview = () => {
     // player.setting.add 不依赖 ready，构造后即可调用；customType 里创建的
     // hlsPlayer 也在构造期同步完成，音轨/视频轨的 onSelect 闭包到时再取用即可。
     applyTranscodeTrackMenus()
+    // 齿轮通用菜单（视频/音频转码开关 + 自定义字幕）始终挂载，不依赖是否转码
+    applyCommonMenus()
     // 兜底：若某些情况下构造期 setting 尚未就绪，ready 时再补一次（幂等）
     player.once("ready", applyTranscodeTrackMenus)
+    player.once("ready", applyCommonMenus)
 
-    // 【弹幕时间同步】加载自写解析器得到的弹幕数组，并实现 B 站式的
-    // "跳到哪里、弹幕就跟到哪里"行为。
-    // 插件原生只在 playing 时用 ±0.1s 窗口匹配，暂停时 seek 不触发、倍速会错位；
-    // 这里在 seek/暂停时把队列 reset 并把落点附近的弹幕重新 emit，
-    // 让弹幕始终和当前时间进度对应。
+    // 【弹幕时间同步】B 站式：弹幕始终按它自己的 time 跟随视频时间轴显示。
+    // 之前的实现在 seek 时把弹幕 time 篡改成了落点时刻并重新 emit，且暂停时
+    // 插件 update 循环不发射（art.playing=false），导致"跳到时间点什么也看不到"。
+    // 现在彻底删掉那套 hack：load 一次原始弹幕（time 原样），seek 时只清掉
+    // 屏幕上还在飞的旧弹幕（reset），插件下一帧会按新的 currentTime 自动发射
+    // time 落在落点的弹幕——全程不改 time、不重放，弹幕与进度始终一一对应。
     if (danmu) {
       const dPlugin = () =>
         (player as any).plugins?.artplayerPluginDanmuku as
           | {
               load: (d: DanmuItem[]) => Promise<void>
               reset: () => void
-              emit: (d: DanmuItem) => void
             }
           | undefined
 
@@ -923,44 +1029,10 @@ const Preview = () => {
         console.log(`[danmaku] loaded ${danmuList.length} items (self-parsed)`)
       })
 
-      // seek / 快进后：重放落点附近的弹幕，使画面和弹幕对齐。
-      // 用二分查找定位 time 落在 [currentTime - window, currentTime + ε] 的弹幕。
-      const SYNC_WINDOW = 1.2 // 秒：把落点前 1.2s 内、理论上"正在飞"的弹幕补发出来
-      const replayAt = (currentTime: number) => {
-        const p = dPlugin()
-        if (!p || !danmuList.length) return
-        p.reset()
-        // 找到第一段 time >= currentTime - SYNC_WINDOW 的弹幕
-        let lo = 0,
-          hi = danmuList.length
-        while (lo < hi) {
-          const mid = (lo + hi) >> 1
-          if (danmuList[mid].time < currentTime - SYNC_WINDOW) lo = mid + 1
-          else hi = mid
-        }
-        for (let i = lo; i < danmuList.length; i++) {
-          const d = danmuList[i]
-          if (d.time > currentTime + 0.05) break
-          // 重新 emit 到落点，让它在当前时刻出现（0.01 规避 time=0 的 falsy 判断）
-          p.emit({ ...d, time: currentTime > 0 ? currentTime : 0.01 })
-        }
-      }
-      let lastSeekTime = -1
+      // seek / 快进：只清掉还在飞的旧弹幕，让弹幕重新对齐到新进度。
+      // 不 emit、不改 time——插件依据弹幕自身 time 继续，落点处的弹幕会自动出现。
       player.on("video:seeked", () => {
-        const ct = player.video?.currentTime ?? 0
-        lastSeekTime = ct
-        replayAt(ct)
-      })
-      // 暂停状态下 seek 也要同步：暂停时 timeupdate 仍会触发（部分浏览器），
-      // 这里补一个 timeupdate 监听，仅当发生明显跳转（>0.5s）时才重放，避免正常播放重复刷。
-      player.on("video:timeupdate", () => {
-        const ct = player.video?.currentTime ?? 0
-        if (Math.abs(ct - lastSeekTime) > 0.5 && player.video?.paused) {
-          lastSeekTime = ct
-          replayAt(ct)
-        } else {
-          lastSeekTime = ct
-        }
+        dPlugin()?.reset()
       })
     }
     const auto_fullscreen = searchParams["auto_fullscreen"] === "true"
